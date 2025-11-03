@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MCP Box Server</title>
+    <style>
+      :root {
+        --bg: #0b0f17;
+        --card: #121826;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #3b82f6;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+        background: radial-gradient(circle at top, #0b0f17 0%, #0f172a 100%);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+
+      .card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 480px;
+        width: 90%;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        text-align: left;
+      }
+
+      h1 {
+        font-size: 26px;
+        margin-bottom: 6px;
+      }
+
+      p {
+        color: var(--muted);
+        font-size: 15px;
+        margin-bottom: 24px;
+      }
+
+      .info-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .item {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+
+      .item-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+
+      .item-value {
+        margin-top: 6px;
+        font-weight: 600;
+      }
+
+      .item-value a {
+        color: var(--text);
+        text-decoration: none;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 6px 10px;
+        border-radius: 8px;
+        transition: background 0.2s;
+      }
+
+      .item-value a:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .buttons {
+        margin-top: 24px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      a.btn {
+        flex: 1 1 0;
+        text-align: center;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        padding: 10px 0;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+
+      a.btn:hover {
+        background: #2563eb;
+      }
+
+      a.btn.ghost {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: var(--text);
+      }
+
+      a.btn.ghost:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>MCP Box Server</h1>
+      <p>API server for MCP server registry and management</p>
+
+      <div class="info-grid">
+        <div class="item">
+          <div class="item-label">Version</div>
+          <div class="item-value">1.0.0</div>
+        </div>
+        <div class="item">
+          <div class="item-label">Health</div>
+          <div class="item-value"><a href="/health">/health</a></div>
+        </div>
+        <div class="item">
+          <div class="item-label">Docs</div>
+          <div class="item-value"><a href="/docs">/docs</a></div>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <a class="btn" href="/docs">Open API Docs</a>
+        <a class="btn ghost" href="/redoc">ReDoc</a>
+      </div>
+    </main>
+  </body>
+</html>

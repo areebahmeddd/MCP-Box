@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcpbox"
+version = "1.0.0"
+description = "Discover, deploy, and test MCPs in isolated sandboxes"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "MCP Box Team"}
+]
+keywords = ["mcp", "fastapi", "docker", "cli", "security", "registry"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "python-dotenv>=1.2.1",
+    "boto3>=1.40.64",
+    "pydantic>=2.12.3",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.121.0",
+    "uvicorn[standard]>=0.38.0",
+    "razorpay>=2.0.0",
+]
+cli = [
+    "click>=8.3.0",
+    "requests>=2.32.5",
+]
+dev = [
+    "pytest>=8.0.0",
+    "black>=24.0.0",
+    "ruff>=0.6.0",
+    "pre-commit>=3.7.0",
+]
+all = [
+    "mcpbox[server,cli,dev]"
+]
+
+[project.scripts]
+mcpbox = "mcpbox.cli.main:main"
+mcpbox-server = "mcpbox.server.main:run_server"
+
+[project.urls]
+Homepage = "https://github.com/areebahmeddd/mcp-box"
+Documentation = "https://github.com/areebahmeddd/mcp-box#readme"
+Repository = "https://github.com/areebahmeddd/mcp-box"
+Issues = "https://github.com/areebahmeddd/mcp-box/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["mcpbox*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

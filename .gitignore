@@ -1,52 +1,83 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
 *.so
-*.dylib
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Test binary, built with `go test -c`
-*.test
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# Environment
+.env
+.env.*
+!.env.example
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# MCP Box Configuration
+mcpbox.json
 
-# Go workspace file
-go.work
-
-# IDE files
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS generated files
+*~
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
 
-# Project specific directories
-extracted/
-output/
-uploads/
-*.tar
-*.zip
-
-# Log files
+# Logs
 *.log
+logs/
+reports/
 
-# Environment files
-.env
-.env.local
-.env.*.local
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
 
-# Temporary files
+# Scanner Reports
+.scannerwork/
+sonar-project.properties
+
+# Static analysis
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Temporary
+*.tmp
 tmp/
 temp/
+*.bak
+*.cache
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build artifacts
+*.whl
+*.tar.gz
