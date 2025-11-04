@@ -17,8 +17,8 @@ from mcpbox.shared.config import Config, load_env
 
 
 @click.command()
-@click.option("--name", "-n", help="MCP server name (reads from mcpbox.json if not provided)")
-@click.option("--force", "-f", is_flag=True, help="Force overwrite if server exists")
+@click.option("--name", help="MCP server name (reads from mcpbox.json if not provided)")
+@click.option("--force", is_flag=True, help="Force overwrite if server exists")
 def push(
     name: str | None,
     force: bool,
@@ -51,7 +51,7 @@ def push(
         bucket = cfg.S3_BUCKET_NAME
 
         if not bucket:
-            click.echo("Error: S3_BUCKET_NAME not found in .env file or --bucket option")
+            click.echo("Error: S3_BUCKET_NAME not found in .env file")
             sys.exit(1)
 
         try:

@@ -1,4 +1,6 @@
-"""Shared CLI utilities"""
+"""
+Shared CLI utilities
+"""
 
 from datetime import datetime
 from pathlib import Path
@@ -127,42 +129,48 @@ def show_summary(security_report: Dict[str, Any]) -> None:
         click.echo("Details: " + ", ".join(parts))
 
 
-def vscode_path() -> Path:
-    """Get VS Code mcp.json path based on operating system"""
+def config_path(app: str) -> Path:
+    app = app.lower()
     system = platform.system()
-
-    if system == "Windows":
-        return (
-            Path(os.getenv("APPDATA"))
-            / "Code"
-            / "User"
-            / "globalStorage"
-            / "rooveterinaryinc.roo-cline"
-            / "settings"
-            / "mcp.json"
-        )
-    elif system == "Darwin":
-        return (
-            Path.home()
-            / "Library"
-            / "Application Support"
-            / "Code"
-            / "User"
-            / "globalStorage"
-            / "rooveterinaryinc.roo-cline"
-            / "settings"
-            / "mcp.json"
-        )
-    elif system == "Linux":
-        return (
-            Path.home()
-            / ".config"
-            / "Code"
-            / "User"
-            / "globalStorage"
-            / "rooveterinaryinc.roo-cline"
-            / "settings"
-            / "mcp.json"
-        )
-    else:
-        raise RuntimeError(f"Unsupported operating system: {system}")
+    if app == "vscode":
+        if system == "Windows":
+            return Path(os.getenv("APPDATA")) / "Code" / "User" / "mcp.json"
+        if system == "Darwin":
+            return Path.home() / "Library" / "Application Support" / "Code" / "User" / "mcp.json"
+        if system == "Linux":
+            return Path.home() / ".config" / "Code" / "User" / "mcp.json"
+    if app == "cursor":
+        if system == "Windows":
+            return Path(os.getenv("USERPROFILE")) / ".cursor" / "mcp.json"
+        if system == "Darwin" or system == "Linux":
+            return Path.home() / ".cursor" / "mcp.json"
+    if app == "windsurf":
+        if system == "Windows":
+            return Path(os.getenv("APPDATA")) / "Windsurf" / "User" / "mcp.json"
+        if system == "Darwin":
+            return (
+                Path.home() / "Library" / "Application Support" / "Windsurf" / "User" / "mcp.json"
+            )
+        if system == "Linux":
+            return Path.home() / ".config" / "Windsurf" / "User" / "mcp.json"
+    if app == "claude":
+        if system == "Windows":
+            return Path(os.getenv("APPDATA")) / "Claude" / "claude_desktop_config.json"
+        if system == "Darwin":
+            return (
+                Path.home()
+                / "Library"
+                / "Application Support"
+                / "Claude"
+                / "claude_desktop_config.json"
+            )
+        if system == "Linux":
+            return Path.home() / ".config" / "Claude" / "claude_desktop_config.json"
+    if app == "chatgpt":
+        if system == "Windows":
+            return Path(os.getenv("APPDATA")) / "ChatGPT" / "mcp.json"
+        if system == "Darwin":
+            return Path.home() / "Library" / "Application Support" / "ChatGPT" / "mcp.json"
+        if system == "Linux":
+            return Path.home() / ".config" / "ChatGPT" / "mcp.json"
+    raise RuntimeError(f"Unsupported app '{app}' or OS '{system}'")
