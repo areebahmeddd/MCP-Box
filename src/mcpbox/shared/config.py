@@ -13,30 +13,28 @@ class Config:
     """Configuration class for MCP Box"""
 
     def __init__(self) -> None:
-        # AWS Configuration
+        # AWS Configurations
         self.AWS_REGION = get_env("AWS_REGION")
         self.AWS_ACCESS_KEY_ID = get_env("AWS_ACCESS_KEY_ID")
         self.AWS_SECRET_ACCESS_KEY = get_env("AWS_SECRET_ACCESS_KEY")
         self.S3_BUCKET_NAME = get_env("S3_BUCKET_NAME")
-
-        # Lambda Configuration
         self.LAMBDA_BASE_URL = get_env("LAMBDA_BASE_URL")
 
-        # Scanner Configuration
+        # Scanners Configurations
         self.SONAR_TOKEN = get_env("SONAR_TOKEN")
         self.SONAR_ORGANIZATION = get_env("SONAR_ORGANIZATION")
         self.GITGUARDIAN_API_KEY = get_env("GITGUARDIAN_API_KEY")
 
-        # Payment Configuration
+        # Razorpay Configurations
         self.RAZORPAY_KEY_ID = get_env("RAZORPAY_KEY_ID")
         self.RAZORPAY_KEY_SECRET = get_env("RAZORPAY_KEY_SECRET")
 
     def validate_server(self) -> bool:
         """Validate required configuration for server"""
         required = {
+            "AWS_REGION": self.AWS_REGION,
             "AWS_ACCESS_KEY_ID": self.AWS_ACCESS_KEY_ID,
             "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
-            "AWS_REGION": self.AWS_REGION,
             "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
             "LAMBDA_BASE_URL": self.LAMBDA_BASE_URL,
             "RAZORPAY_KEY_ID": self.RAZORPAY_KEY_ID,
@@ -50,9 +48,9 @@ class Config:
     def validate_cli(self) -> bool:
         """Validate required configuration for CLI"""
         required = {
+            "AWS_REGION": self.AWS_REGION,
             "AWS_ACCESS_KEY_ID": self.AWS_ACCESS_KEY_ID,
             "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
-            "AWS_REGION": self.AWS_REGION,
             "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
             "SONAR_TOKEN": self.SONAR_TOKEN,
             "SONAR_ORGANIZATION": self.SONAR_ORGANIZATION,
