@@ -37,25 +37,24 @@ python -m pip install -e .[dev]
 
 ## 4) Configure environment (.env)
 
-Create a `.env` in the working directory (the server loads it at startup; CLI commands expect it in the current directory). Only add what you need to use.
+Create a `.env` in the working directory (the server loads it at startup; CLI commands expect it in the current directory). Use the following keys:
 
 ```dotenv
 # AWS (required for S3-backed registry)
-AWS_REGION=us-east-1
+AWS_REGION=ap-south-1
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 S3_BUCKET_NAME=your-bucket
-S3_METADATA_KEY=mcp.json
 
-# Lambda base URL for the proxy endpoint
-LAMBDA_BASE_URL=https://your-lambda-url.amazonaws.com
+# Lambda base URL for the executor endpoint (API Gateway URL)
+LAMBDA_BASE_URL=https://your-api.example.com/run
 
-# Scanners (only if you use them)
+# Scanners (required for `mcpbox push`)
 SONAR_TOKEN=...
 SONAR_ORGANIZATION=...
 GITGUARDIAN_API_KEY=...
 
-# Payments (only if you use payment routes)
+# Payments (required)
 RAZORPAY_KEY_ID=...
 RAZORPAY_KEY_SECRET=...
 ```
@@ -76,7 +75,7 @@ Then open:
 - Health: http://127.0.0.1:8000/health
 - Root: http://127.0.0.1:8000/
 
-If you run with no `.env`, the server may start but health can be degraded until you add required values.
+If `.env` is incomplete or missing, server health will be degraded and routes depending on missing configuration will fail.
 
 ## 6) Use the CLI
 
@@ -95,13 +94,15 @@ mcpbox init
 Push a server definition (scan + upload to S3):
 
 ```powershell
-mcpbox push --name <server-name> --repo-url <https-url-or-ssh>
+mcpbox push --name <server-name>
+# The repository URL is read from mcpbox.json created by `mcpbox init`
 ```
 
-Pull and configure server in VS Code MCP config:
+Pull and configure client MCP settings:
 
 ```powershell
-mcpbox pull --name <server-name>
+mcpbox pull --name <server-name> --client cursor
+# Supported clients: vscode | cursor | windsurf | claude | chatgpt
 ```
 
 Search available servers:
@@ -113,9 +114,9 @@ mcpbox search
 ## 7) Troubleshooting
 
 - Missing env: ensure `.env` is present with the variables above.
-- AWS permissions: verify bucket exists and IAM creds allow GetObject/PutObject on `S3_METADATA_KEY`.
+- AWS permissions: verify bucket exists and IAM creds allow GetObject/PutObject for the bucket.
 - Sonar scanner: requires `sonar-scanner` on PATH; set `SONAR_TOKEN` and `SONAR_ORGANIZATION`.
-- ggshield/Bandit: install those tools if you plan to run those scans.
+- ggshield/Bandit CLIs: install these tools if you plan to run those scans (`ggshield`, `bandit` in PATH).
 
 ## 8) Uninstall / Clean up
 
