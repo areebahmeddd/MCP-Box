@@ -132,6 +132,7 @@ def push(
             current_time = datetime.now().astimezone().isoformat()
 
             server_data = {
+                "name": name,
                 "repository": {"type": "git", "url": repo_url},
                 "meta": config.get("meta", {}),
                 "description": config.get("description", ""),
@@ -143,7 +144,7 @@ def push(
 
             click.echo("Uploading to S3...")
 
-            s3.upsert_server(bucket, server_data)
+            s3.upsert_server(bucket, name, server_data)
 
             click.echo("Push complete")
 

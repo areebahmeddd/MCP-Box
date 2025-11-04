@@ -7,26 +7,23 @@ from fastapi.responses import JSONResponse
 
 from mcpbox.shared.config import Config
 from mcpbox.shared.models import CreateServerRequest
-from mcpbox.shared.s3 import get_registry, upsert_server
+from mcpbox.shared.s3 import (
+    list_servers as s3_list_servers,
+    get_server as s3_get_server,
+    upsert_server,
+)
 
 router = APIRouter()
 
 _cfg = Config()
 S3_BUCKET = _cfg.S3_BUCKET_NAME
-S3_KEY = _cfg.S3_METADATA_KEY
 
 
 @router.get("/{server_name}")
 async def get_server(server_name: str) -> JSONResponse:
     """Get detailed information about a specific MCP server"""
     try:
-        file_data = get_registry(S3_BUCKET, S3_KEY)
-
-        if not file_data or "servers" not in file_data:
-            raise HTTPException(status_code=404, detail="MCP servers database not found")
-
-        servers = file_data.get("servers", [])
-        server = next((s for s in servers if s["name"] == server_name), None)
+        server = s3_get_server(S3_BUCKET, server_name)
 
         if not server:
             raise HTTPException(status_code=404, detail=f"Server '{server_name}' not found")
@@ -43,15 +40,13 @@ async def get_server(server_name: str) -> JSONResponse:
 async def list_servers() -> JSONResponse:
     """List all MCP servers from S3 bucket"""
     try:
-        file_data = get_registry(S3_BUCKET, S3_KEY)
+        server_map = s3_list_servers(S3_BUCKET)
 
-        if not file_data:
+        if not server_map:
             return JSONResponse(content={"status": "success", "total": 0, "servers": []})
 
-        servers = file_data.get("servers", [])
-
         server_list = []
-        for server in servers:
+        for server in server_map.values():
             server_info = {
                 "name": server.get("name"),
                 "version": server.get("version"),
@@ -88,10 +83,8 @@ async def list_servers() -> JSONResponse:
 async def create_server(server: CreateServerRequest) -> JSONResponse:
     """Create a new MCP server and add it to S3"""
     try:
-        file_data = get_registry(S3_BUCKET, S3_KEY)
-
-        servers = file_data.get("servers", [])
-        if any(s["name"] == server.name for s in servers):
+        existing = s3_get_server(S3_BUCKET, server.name)
+        if existing:
             raise HTTPException(status_code=400, detail=f"Server '{server.name}' already exists")
 
         new_server = {
@@ -117,7 +110,7 @@ async def create_server(server: CreateServerRequest) -> JSONResponse:
         if server.tools:
             new_server["tools"] = server.tools
 
-        upsert_server(S3_BUCKET, new_server, S3_KEY)
+        upsert_server(S3_BUCKET, server.name, new_server)
 
         return JSONResponse(
             content={"status": "success", "message": "Server created", "server": new_server},

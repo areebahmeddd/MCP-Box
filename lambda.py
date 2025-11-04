@@ -23,7 +23,6 @@ def get_env(key: str) -> str:
 # Configuration
 AWS_REGION = get_env("AWS_REGION")
 S3_BUCKET = get_env("S3_BUCKET_NAME")
-S3_METADATA_KEY = get_env("S3_METADATA_KEY")
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -84,21 +83,16 @@ def extract_name(event: Dict[str, Any]) -> str:
 
 
 def fetch_meta(mcp_name: str) -> Dict[str, Any]:
-    """Fetch MCP server metadata from S3."""
+    """Fetch MCP server metadata from S3 per-file storage (<name>.json)."""
     s3 = boto3.client("s3", region_name=AWS_REGION)
 
+    key = f"{mcp_name}.json"
     try:
-        response = s3.get_object(Bucket=S3_BUCKET, Key=S3_METADATA_KEY)
-        mcp_registry = json.loads(response["Body"].read().decode("utf-8"))
-
-        for mcp in mcp_registry.get("servers", []):
-            if mcp.get("name") == mcp_name:
-                return mcp
-
-        raise ValueError(f"MCP server '{mcp_name}' not found in registry")
-
+        response = s3.get_object(Bucket=S3_BUCKET, Key=key)
+        mcp = json.loads(response["Body"].read().decode("utf-8"))
+        return mcp
     except s3.exceptions.NoSuchKey:
-        raise FileNotFoundError(f"MCP registry file not found in S3: {S3_METADATA_KEY}")
+        raise FileNotFoundError(f"MCP definition not found in S3: {key}")
     except Exception as e:
         raise Exception(f"Failed to fetch MCP metadata: {str(e)}")
 

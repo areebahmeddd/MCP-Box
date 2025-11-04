@@ -18,7 +18,6 @@ class Config:
         self.AWS_ACCESS_KEY_ID = get_env("AWS_ACCESS_KEY_ID")
         self.AWS_SECRET_ACCESS_KEY = get_env("AWS_SECRET_ACCESS_KEY")
         self.S3_BUCKET_NAME = get_env("S3_BUCKET_NAME")
-        self.S3_METADATA_KEY = get_env("S3_METADATA_KEY")
 
         # Lambda Configuration
         self.LAMBDA_BASE_URL = get_env("LAMBDA_BASE_URL")
@@ -39,7 +38,6 @@ class Config:
             "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
             "AWS_REGION": self.AWS_REGION,
             "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
-            "S3_METADATA_KEY": self.S3_METADATA_KEY,
             "LAMBDA_BASE_URL": self.LAMBDA_BASE_URL,
             "RAZORPAY_KEY_ID": self.RAZORPAY_KEY_ID,
             "RAZORPAY_KEY_SECRET": self.RAZORPAY_KEY_SECRET,

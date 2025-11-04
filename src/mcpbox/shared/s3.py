@@ -1,10 +1,9 @@
-"""S3 utilities for MCP Box"""
+"""S3 utilities for MCP Box (per-MCP file storage)"""
 
 import json
 from typing import Any, Dict, Optional, Tuple
 
 import boto3
-from botocore.exceptions import ClientError
 
 from mcpbox.shared.config import Config
 
@@ -20,73 +19,87 @@ def s3_client() -> Any:
     )
 
 
-def get_registry(bucket_name: str, key: str = "mcp.json") -> Dict[str, Any]:
-    """Fetch mcp.json from S3 bucket"""
+def _server_key(server_name: str) -> str:
+    return f"{server_name}.json"
+
+
+def get_server(bucket_name: str, server_name: str) -> Optional[Dict[str, Any]]:
+    """Fetch a single MCP server JSON: <name>.json"""
     s3 = s3_client()
+    key = _server_key(server_name)
     try:
         response = s3.get_object(Bucket=bucket_name, Key=key)
         content = response["Body"].read().decode("utf-8")
         return json.loads(content)
-    except (s3.exceptions.NoSuchKey, ClientError):
-        return {"servers": []}
+    except Exception:
+        return None
 
 
-def save_registry(bucket_name: str, data: Dict[str, Any], key: str = "mcp.json") -> bool:
-    """Upload mcp.json to S3 bucket"""
+def save_server(bucket_name: str, server_name: str, data: Dict[str, Any]) -> bool:
+    """Write a single MCP server JSON: <name>.json"""
     s3 = s3_client()
+    key = _server_key(server_name)
+    payload = dict(data)
+    if "name" not in payload:
+        payload["name"] = server_name
     s3.put_object(
-        Bucket=bucket_name, Key=key, Body=json.dumps(data, indent=2), ContentType="application/json"
+        Bucket=bucket_name,
+        Key=key,
+        Body=json.dumps(payload, indent=2),
+        ContentType="application/json",
     )
     return True
 
 
-def check_server(
-    bucket_name: str, server_name: str, key: str = "mcp.json"
-) -> Tuple[bool, Dict[str, Any]]:
-    """Check if a server exists in mcp.json"""
-    mcp_data = get_registry(bucket_name, key)
-    servers = mcp_data.get("servers", [])
+def list_servers(bucket_name: str) -> Dict[str, Dict[str, Any]]:
+    """List all MCP servers by enumerating *.json objects in the bucket.
 
-    for server in servers:
-        if server.get("name") == server_name:
-            return True, mcp_data
-
-    return False, mcp_data
-
-
-def find_server(
-    bucket_name: str, server_name: str, key: str = "mcp.json"
-) -> Optional[Dict[str, Any]]:
-    """Find a server by name in mcp.json"""
-    mcp_data = get_registry(bucket_name, key)
-    servers = mcp_data.get("servers", [])
-
-    for server in servers:
-        if server.get("name") == server_name:
-            return server
-
-    return None
-
-
-def upsert_server(bucket_name: str, server_data: Dict[str, Any], key: str = "mcp.json") -> bool:
-    """Add a new server or update existing server in mcp.json"""
-    mcp_data = get_registry(bucket_name, key)
-    servers = mcp_data.get("servers", [])
-
-    existing_server = None
-    for s in servers:
-        if s.get("name") == server_data["name"]:
-            existing_server = s
+    Returns a mapping {name: data}.
+    """
+    s3 = s3_client()
+    servers: Dict[str, Dict[str, Any]] = {}
+    continuation_token: Optional[str] = None
+    while True:
+        kwargs: Dict[str, Any] = {"Bucket": bucket_name}
+        if continuation_token:
+            kwargs["ContinuationToken"] = continuation_token
+        resp = s3.list_objects_v2(**kwargs)
+        for obj in resp.get("Contents", []):
+            key = obj.get("Key", "")
+            if not key.lower().endswith(".json"):
+                continue
+            name = key[:-5]  # strip .json
+            try:
+                data = get_server(bucket_name, name)
+                if data is not None:
+                    servers[name] = data
+            except Exception:
+                # Skip unreadable entries
+                pass
+        if resp.get("IsTruncated"):
+            continuation_token = resp.get("NextContinuationToken")
+        else:
             break
+    return servers
 
-    if existing_server and "meta" in existing_server:
+
+def check_server(bucket_name: str, server_name: str) -> Tuple[bool, Dict[str, Any]]:
+    """Check if a per-file server exists; returns (exists, currentDataOrEmpty)."""
+    data = get_server(bucket_name, server_name)
+    return (data is not None, data or {})
+
+
+def find_server(bucket_name: str, server_name: str) -> Optional[Dict[str, Any]]:
+    """Find a server by name using per-file storage."""
+    return get_server(bucket_name, server_name)
+
+
+def upsert_server(bucket_name: str, server_name: str, server_data: Dict[str, Any]) -> bool:
+    """Create or update a single MCP server file <name>.json, preserving created_at if present."""
+    existing = get_server(bucket_name, server_name)
+    if existing and existing.get("meta") and existing["meta"].get("created_at"):
+        server_data = dict(server_data)
         if "meta" not in server_data:
             server_data["meta"] = {}
-        server_data["meta"]["created_at"] = existing_server["meta"]["created_at"]
-
-    servers = [s for s in servers if s.get("name") != server_data["name"]]
-
-    servers.append(server_data)
-    mcp_data["servers"] = servers
-
-    return save_registry(bucket_name, mcp_data, key)
+        server_data["meta"]["created_at"] = existing["meta"]["created_at"]
+    return save_server(bucket_name, server_name, server_data)

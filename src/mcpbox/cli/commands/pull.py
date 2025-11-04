@@ -37,8 +37,7 @@ def pull(name: str) -> None:
             click.echo("Error: S3_BUCKET_NAME not found in .env file or --bucket option")
             sys.exit(1)
 
-        mcp_data = s3.get_registry(bucket)
-        servers = mcp_data.get("mcpServers", {})
+        servers = s3.list_servers(bucket)
 
         if name not in servers:
             click.echo(f"Error: Server '{name}' not found in registry")
