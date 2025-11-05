@@ -1,7 +1,6 @@
 """Push MCP server to registry"""
 
 import json
-from datetime import datetime
 from pathlib import Path
 import shutil
 import sys
@@ -125,18 +124,20 @@ def push(
             finally:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
-            current_time = datetime.now().astimezone().isoformat()
-
             server_data = {
                 "name": name,
                 "repository": {"type": "git", "url": repo_url},
-                "meta": config.get("meta", {}),
                 "description": config.get("description", ""),
-                "createdAt": current_time,
                 "tools": tool_info.get("tool_names", []),
                 "tool_count": tool_info.get("tool_count", 0),
                 "security_report": security_report,
             }
+
+            meta = config.get("meta", {})
+            if meta:
+                meta = {k: v for k, v in meta.items() if k not in ("created_at", "updated_at")}
+                if meta:
+                    server_data["meta"] = meta
 
             click.echo("Uploading to S3...")
 

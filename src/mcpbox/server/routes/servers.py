@@ -6,11 +6,12 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from mcpbox.shared.config import Config
-from mcpbox.shared.models import CreateServerRequest
+from mcpbox.shared.models import CreateServerRequest, UpdateServerRequest
 from mcpbox.shared.s3 import (
     list_servers as s3_list_servers,
     get_server as s3_get_server,
     upsert_server,
+    delete_server as s3_delete_server,
 )
 
 router = APIRouter()
@@ -121,3 +122,95 @@ async def create_server(server: CreateServerRequest) -> JSONResponse:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating server: {str(e)}")
+
+
+@router.put("/{server_name}")
+async def update_server(server_name: str, updates: UpdateServerRequest) -> JSONResponse:
+    """Update an existing MCP server with partial updates"""
+    try:
+        existing = s3_get_server(S3_BUCKET, server_name)
+        if not existing:
+            raise HTTPException(status_code=404, detail=f"Server '{server_name}' not found")
+
+        updated_data = dict(existing)
+
+        new_name = updates.name if updates.name else server_name
+        if updates.name and updates.name != server_name:
+            if s3_get_server(S3_BUCKET, updates.name):
+                raise HTTPException(
+                    status_code=400, detail=f"Server '{updates.name}' already exists"
+                )
+            updated_data["name"] = updates.name
+
+        if updates.version is not None:
+            updated_data["version"] = updates.version
+        if updates.description is not None:
+            updated_data["description"] = updates.description
+        if updates.author is not None:
+            updated_data["author"] = updates.author
+        if updates.lang is not None:
+            updated_data["lang"] = updates.lang
+        if updates.license is not None:
+            updated_data["license"] = updates.license
+        if updates.entrypoint is not None:
+            updated_data["entrypoint"] = updates.entrypoint
+        if updates.repository is not None:
+            updated_data["repository"] = {
+                "type": updates.repository.type,
+                "url": updates.repository.url,
+            }
+        if updates.pricing is not None:
+            updated_data["pricing"] = {
+                "currency": updates.pricing.currency,
+                "amount": updates.pricing.amount,
+            }
+        if updates.tools is not None:
+            updated_data["tools"] = updates.tools
+        if updates.security_report is not None:
+            updated_data["security_report"] = updates.security_report
+
+        if "meta" in updated_data and "created_at" in updated_data["meta"]:
+            del updated_data["meta"]["created_at"]
+
+        if new_name != server_name:
+            s3_delete_server(S3_BUCKET, server_name)
+
+        upsert_server(S3_BUCKET, new_name, updated_data)
+
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Server '{server_name}' updated successfully",
+                "server": updated_data,
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating server: {str(e)}")
+
+
+@router.delete("/{server_name}")
+async def delete_server(server_name: str) -> JSONResponse:
+    """Delete an MCP server from the registry"""
+    try:
+        existing = s3_get_server(S3_BUCKET, server_name)
+        if not existing:
+            raise HTTPException(status_code=404, detail=f"Server '{server_name}' not found")
+
+        success = s3_delete_server(S3_BUCKET, server_name)
+        if not success:
+            raise HTTPException(status_code=500, detail=f"Failed to delete server '{server_name}'")
+
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Server '{server_name}' deleted successfully",
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting server: {str(e)}")

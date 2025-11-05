@@ -1,6 +1,7 @@
 """S3 utilities for MCP Box (per-MCP file storage)"""
 
 import json
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import boto3
@@ -97,9 +98,29 @@ def find_server(bucket_name: str, server_name: str) -> Optional[Dict[str, Any]]:
 def upsert_server(bucket_name: str, server_name: str, server_data: Dict[str, Any]) -> bool:
     """Create or update a single MCP server file <name>.json, preserving created_at if present."""
     existing = get_server(bucket_name, server_name)
-    if existing and existing.get("meta") and existing["meta"].get("created_at"):
-        server_data = dict(server_data)
-        if "meta" not in server_data:
-            server_data["meta"] = {}
-        server_data["meta"]["created_at"] = existing["meta"]["created_at"]
+    server_data = dict(server_data)
+
+    if "meta" not in server_data:
+        server_data["meta"] = {}
+
+    if existing:
+        if existing.get("meta") and existing["meta"].get("created_at"):
+            server_data["meta"]["created_at"] = existing["meta"]["created_at"]
+    else:
+        if "created_at" not in server_data["meta"]:
+            server_data["meta"]["created_at"] = datetime.now(timezone.utc).isoformat()
+
+    server_data["meta"]["updated_at"] = datetime.now(timezone.utc).isoformat()
+
     return save_server(bucket_name, server_name, server_data)
+
+
+def delete_server(bucket_name: str, server_name: str) -> bool:
+    """Delete a single MCP server JSON file: <name>.json"""
+    s3 = s3_client()
+    key = _server_key(server_name)
+    try:
+        s3.delete_object(Bucket=bucket_name, Key=key)
+        return True
+    except Exception:
+        return False

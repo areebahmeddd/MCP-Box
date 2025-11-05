@@ -67,6 +67,22 @@ class CreateServerRequest(BaseModel):
     tools: Optional[dict] = None
 
 
+class UpdateServerRequest(BaseModel):
+    """Request model for updating an MCP server"""
+
+    name: Optional[str] = None
+    version: Optional[str] = None
+    description: Optional[str] = None
+    author: Optional[str] = None
+    lang: Optional[str] = None
+    license: Optional[str] = None
+    entrypoint: Optional[str] = None
+    repository: Optional[Repository] = None
+    pricing: Optional[Pricing] = None
+    tools: Optional[dict] = None
+    security_report: Optional[dict] = None
+
+
 # API Requests - Payment
 class CreateOrderRequest(BaseModel):
     """Request model for creating a payment order"""
