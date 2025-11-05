@@ -50,10 +50,6 @@ def push(
 
         bucket = cfg.S3_BUCKET_NAME
 
-        if not bucket:
-            click.echo("Error: S3_BUCKET_NAME not found in .env file")
-            sys.exit(1)
-
         try:
             exists, _ = s3.check_server(bucket, name)
             server_exists = exists

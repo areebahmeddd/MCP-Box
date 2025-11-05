@@ -23,10 +23,6 @@ def search() -> None:
 
         bucket = cfg.S3_BUCKET_NAME
 
-        if not bucket:
-            click.echo("Error: S3_BUCKET_NAME not found in .env file")
-            sys.exit(1)
-
         servers = s3.list_servers(bucket)
 
         if not servers:

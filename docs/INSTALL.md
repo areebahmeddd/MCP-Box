@@ -72,8 +72,8 @@ mcpbox-server
 
 Then open:
 
-- Health: http://127.0.0.1:8000/health
-- Root: http://127.0.0.1:8000/
+- Health: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- Root: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 If `.env` is incomplete or missing, server health will be degraded and routes depending on missing configuration will fail.
 
@@ -109,6 +109,12 @@ Search available servers:
 
 ```powershell
 mcpbox search
+```
+
+Inspect a server (open repository URL in browser):
+
+```powershell
+mcpbox inspect --name <server-name>
 ```
 
 ## 7) Troubleshooting

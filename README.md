@@ -16,7 +16,7 @@ Why this project:
 
 For setup and deployment, see [docs/INSTALL.md](docs/INSTALL.md).
 
-### Key Features
+## Key Features
 
 - **Central MCP Registry**: S3‑backed registry with per‑server JSON for easy discovery and portability.
 - **Sandboxed Execution**: MCP servers run in isolated environments and return responses securely.
@@ -32,12 +32,12 @@ For setup and deployment, see [docs/INSTALL.md](docs/INSTALL.md).
 
 ## 🗂️ Project Structure
 
-```
+```text
 .
 ├── docs/                       # Documentation (see INSTALL.md)
 ├── src/
 │   └── mcpbox/
-│       ├── cli/                # CLI: init, push, pull, search, scanners
+│       ├── cli/                # CLI: init, push, pull, search, inspect, scanners
 │       │   ├── commands/       # CLI subcommands
 │       │   └── scanners/       # SonarCloud, Bandit, ggshield, discovery
 │       ├── server/             # FastAPI app + routes

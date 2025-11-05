@@ -38,10 +38,6 @@ def pull(name: str, client: str) -> None:
 
         click.echo(f"\nFetching server '{name}' from S3 bucket '{bucket}'...")
 
-        if not bucket:
-            click.echo("Error: S3_BUCKET_NAME not found in .env file")
-            sys.exit(1)
-
         servers = s3.list_servers(bucket)
 
         if name not in servers:
