@@ -1,1 +1,1 @@
-"""Test suite package for MCP Box."""
+"""Test suite package for SuperBox."""

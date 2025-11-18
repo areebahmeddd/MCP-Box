@@ -3,16 +3,16 @@ requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mcpbox"
+name = "superbox"
 version = "1.0.0"
 description = "Discover, deploy, and test MCPs in isolated sandboxes"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "MCP Box Team"}
+    {name = "SuperBox Team"}
 ]
-keywords = ["mcp", "fastapi", "docker", "cli", "security", "registry"]
+keywords = ["mcp", "fastapi", "gin", "docker", "cli", "security", "registry"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -29,46 +29,34 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-server = [
-    "fastapi>=0.121.0",
-    "uvicorn[standard]>=0.38.0",
-    "razorpay>=2.0.0",
-    "requests>=2.32.5",
-]
 cli = [
     "click>=8.3.0",
     "requests>=2.32.5",
 ]
 dev = [
     "pytest>=8.0.0",
-    "black>=24.0.0",
     "ruff>=0.6.0",
     "pre-commit>=3.7.0",
 ]
 all = [
-    "mcpbox[server,cli,dev]"
+    "superbox[cli,dev]"
 ]
 
 [project.scripts]
-mcpbox = "mcpbox.cli.main:main"
-mcpbox-server = "mcpbox.server.main:run_server"
+superbox = "superbox.cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/areebahmeddd/mcp-box"
-Documentation = "https://github.com/areebahmeddd/mcp-box#readme"
-Repository = "https://github.com/areebahmeddd/mcp-box"
-Issues = "https://github.com/areebahmeddd/mcp-box/issues"
+Homepage = "https://github.com/areebahmeddd/superbox.ai"
+Documentation = "https://github.com/areebahmeddd/superbox.ai#readme"
+Repository = "https://github.com/areebahmeddd/superbox.ai"
+Issues = "https://github.com/areebahmeddd/superbox.ai/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["mcpbox*"]
-
-[tool.black]
-line-length = 100
-target-version = ["py311"]
+include = ["superbox*"]
 
 [tool.ruff]
 line-length = 100
