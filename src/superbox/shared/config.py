@@ -9,7 +9,7 @@ class Config:
     """Configuration class for SuperBox"""
 
     def __init__(self) -> None:
-        # API Configuration
+        # API Configurations
         self.SUPERBOX_API_URL = get_env("SUPERBOX_API_URL")
 
         # AWS Configurations
@@ -19,7 +19,7 @@ class Config:
         self.S3_BUCKET_NAME = get_env("S3_BUCKET_NAME")
         self.LAMBDA_BASE_URL = get_env("LAMBDA_BASE_URL")
 
-        # Firebase Configuration
+        # Firebase Configurations
         self.FIREBASE_API_KEY = get_env("FIREBASE_API_KEY")
         self.FIREBASE_PROJECT_ID = get_env("FIREBASE_PROJECT_ID")
 

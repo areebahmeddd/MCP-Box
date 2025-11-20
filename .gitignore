@@ -1,12 +1,28 @@
-# Python
+# OS & editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+
+# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
 *.so
 .Python
+.python-version
+
+# Python packaging / builds
 build/
-develop-eggs/
 dist/
+site/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -19,65 +35,72 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.whl
+*.tar.gz
+pip-wheel-metadata/
 
-# Virtual Environment
-venv/
-ENV/
-env/
+# Virtual environments
+.venv/
 .venv
+venv/
+env/
+ENV/
 
-# Environment
-.env
-.env.*
-!.env.example
-
-# MCP Box Configuration
-mcpbox.json
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Logs
-*.log
-logs/
-reports/
-
-# Testing
-.pytest_cache/
-.coverage
-.coverage.*
-coverage.xml
-htmlcov/
-.tox/
-
-# Scanner Reports
-.scannerwork/
-sonar-project.properties
-
-# Static analysis
+# Dependency caches
+.cache/
+.benchmarks/
+.ruff_cache/
 .mypy_cache/
 .dmypy.json
 dmypy.json
 .pyre/
 .pytype/
-.ruff_cache/
+.tox/
 
-# Temporary
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage.txt
+htmlcov/
+
+# Logs & reports
+*.log
+logs/
+reports/
+*.sqlite3
+*.db
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+.secrets/
+mcpbox.json
+
+# Temporary files
 *.tmp
 tmp/
 temp/
 *.bak
 *.cache
 
-# OS
-Thumbs.db
-.DS_Store
+# Go builds
+bin/
+*.exe
+*.test
+*.out
 
-# Build artifacts
-*.whl
-*.tar.gz
+# Node tooling
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# Docker overrides
+docker-compose.override.yml
+.docker/
+
+# Scanner / static analysis
+.scannerwork/
+sonar-project.properties
