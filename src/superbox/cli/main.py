@@ -1,4 +1,6 @@
+import sys
 import click
+from pathlib import Path
 
 from superbox.cli.commands.init import init
 from superbox.cli.commands.auth import auth
@@ -8,6 +10,21 @@ from superbox.cli.commands.run import run
 from superbox.cli.commands.search import search
 from superbox.cli.commands.inspect import inspect
 from superbox.cli.commands.test import test
+
+
+def display_banner():
+    """Load and display banner"""
+    if len(sys.argv) > 1 and sys.argv[1] in ["--help", "-h", "--version", "-v"]:
+        return
+
+    banner_path = Path(__file__).parent / "banner.txt"
+    try:
+        with open(banner_path, "r", encoding="utf-8") as f:
+            banner = f.read()
+            if banner:
+                click.echo(banner)
+    except FileNotFoundError:
+        pass
 
 
 @click.group()
@@ -30,6 +47,7 @@ cli.add_command(test)
 
 def main():
     """Entry point for CLI"""
+    display_banner()
     cli()
 
 
