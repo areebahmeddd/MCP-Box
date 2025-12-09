@@ -15,6 +15,17 @@ type AuthRegisterRequest struct {
 	DisplayName *string `json:"display_name,omitempty"`
 }
 
+type AuthSendOTPRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AuthVerifyOTPRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	OTPCode  string `json:"otp_code"`
+}
+
 type AuthLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`

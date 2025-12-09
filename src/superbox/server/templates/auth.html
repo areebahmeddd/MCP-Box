@@ -130,22 +130,24 @@
       <p class="message{{if .error}} error{{end}}">{{.message}}</p>
 
       {{if .show_form}}
-      <form method="post">
+      <form method="post" action="">
         <div>
-          <label for="code">Device code</label>
+          <label for="code">Verification code</label>
           <input
             type="text"
             id="code"
             name="code"
             value="{{.code}}"
             autocomplete="one-time-code"
-            inputmode="latin"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
             spellcheck="false"
             required
             autofocus
           />
         </div>
-        <button class="btn" type="submit">Continue</button>
+        <button class="btn" type="submit">Verify</button>
       </form>
       {{else}}
       <div class="status">

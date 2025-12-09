@@ -16,6 +16,9 @@ func main() {
 		log.Println("No .env file found, using environment variables")
 	}
 
+	// Initialize config after .env is loaded
+	handlers.InitConfig()
+
 	router := gin.Default()
 
 	router.LoadHTMLFiles(

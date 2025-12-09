@@ -195,38 +195,75 @@ def auth() -> None:
     "--password",
     prompt=True,
     hide_input=True,
-    confirmation_prompt=False,
+    confirmation_prompt=True,
     help="Firebase password",
 )
 def register(email: str, password: str) -> None:
-    """Create a new SuperBox account via Firebase"""
     try:
         cfg = _config_load()
-        url = _identity_url("accounts:signUp", cfg.FIREBASE_API_KEY)
-        payload = {
-            "email": email,
-            "password": password,
-            "returnSecureToken": True,
-        }
-        response = requests.post(url, json=payload, timeout=30)
+        base_url = cfg.SUPERBOX_API_URL.rstrip("/")
+        
+        send_response = requests.post(
+            f"{base_url}/auth/register/send-otp",
+            json={"email": email, "password": password},
+            timeout=30,
+        )
 
-        if response.status_code != 200:
-            error = _error_text(response)
-            click.echo(f"Registration failed: {error}")
+        if send_response.status_code != 200:
+            error = _error_text(send_response)
+            click.echo(f"Failed to generate OTP: {error}")
             sys.exit(1)
 
-        data = response.json()
-        _save_auth(
-            {
-                "email": data.get("email"),
-                "id_token": data.get("idToken"),
-                "refresh_token": data.get("refreshToken"),
-                "expires_in": int(data.get("expiresIn", "0")),
-                "local_id": data.get("localId"),
-                "provider": "password",
-            }
-        )
-        click.echo("Registration successful. You are now logged in.")
+        data = send_response.json()
+        otp_code = data.get("otp")
+        session_id = data.get("session_id")
+        
+        click.echo(f"\nYour verification code: {otp_code}")
+        
+        verification_url = f"{base_url}/auth/register/verify-page?session_id={session_id}"
+        click.echo(f"Opening browser for verification: {verification_url}")
+        
+        opened = webbrowser.open(verification_url)
+        if not opened:
+            click.echo("Could not open browser. Please open the URL manually.")
+        
+        click.echo("Waiting for verification...")
+        start_time = time.time()
+        timeout = 300
+        
+        while True:
+            if time.time() - start_time >= timeout:
+                click.echo("\nVerification timed out.")
+                sys.exit(1)
+            
+            poll_response = requests.get(
+                f"{base_url}/auth/register/poll?session_id={session_id}",
+                timeout=30,
+            )
+            
+            if poll_response.status_code == 202:
+                time.sleep(3)
+                continue
+            
+            if poll_response.status_code == 200:
+                result = poll_response.json()
+                _save_auth(
+                    {
+                        "email": result.get("email") or email,
+                        "id_token": result.get("id_token"),
+                        "refresh_token": result.get("refresh_token"),
+                        "expires_in": int(result.get("expires_in", "0")),
+                        "local_id": result.get("local_id"),
+                        "provider": "password",
+                    }
+                )
+                click.echo("\nRegistration successful. You are now logged in.")
+                return
+            
+            error = _error_text(poll_response)
+            click.echo(f"\nVerification failed: {error}")
+            sys.exit(1)
+            
     except Exception as exc:
         click.echo(f"\nError: {exc}")
         sys.exit(1)

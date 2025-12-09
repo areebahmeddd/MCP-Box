@@ -24,8 +24,20 @@ var (
 	deviceSessions = make(map[string]*models.DeviceSession)
 	stateIndex     = make(map[string]string)
 	userIndex      = make(map[string]string)
+	otpStore       = make(map[string]*OTPSession)
 	sessionMutex   sync.RWMutex
 )
+
+type OTPSession struct {
+	SessionID string
+	Email     string
+	Password  string
+	OTPCode   string
+	Status    string
+	Tokens    map[string]interface{}
+	CreatedAt float64
+	ExpiresAt float64
+}
 
 const (
 	deviceSessionTTL   = 600
@@ -44,17 +56,19 @@ var (
 )
 
 func init() {
-	firebaseAPIKey = os.Getenv("FIREBASE_API_KEY")
-	googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
-	googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
-	githubClientID = os.Getenv("GITHUB_CLIENT_ID")
-	githubClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
-
 	templatePath := filepath.Join("templates", "auth.html")
 	tmpl, err := template.ParseFiles(templatePath)
 	if err == nil {
 		authTemplate = tmpl
 	}
+}
+
+func InitConfig() {
+	firebaseAPIKey = os.Getenv("FIREBASE_API_KEY")
+	googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
+	googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
+	githubClientID = os.Getenv("GITHUB_CLIENT_ID")
+	githubClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
 }
 
 func RegisterAuth(api *gin.RouterGroup) {
@@ -67,6 +81,10 @@ func RegisterAuth(api *gin.RouterGroup) {
 		auth.GET("/device/callback/google", callbackGoogle)
 		auth.GET("/device/callback/github", callbackGitHub)
 
+		auth.POST("/register/send-otp", sendOTP)
+		auth.GET("/register/verify-page", verifyPage)
+		auth.POST("/register/verify-page", verifyPageSubmit)
+		auth.GET("/register/poll", pollRegistration)
 		auth.POST("/register", registerUser)
 		auth.POST("/login", loginUser)
 		auth.POST("/login/provider", loginProvider)
@@ -795,6 +813,209 @@ func callbackGitHub(c *gin.Context) {
 
 	setSessionTokens(deviceCode, authDict)
 	renderDevicePage(c, "Authentication complete. You may return to the CLI to finish logging in.", "", false, false)
+}
+
+func generateOTP() string {
+	b := make([]byte, 3)
+	rand.Read(b)
+	code := fmt.Sprintf("%06d", int(b[0])<<16|int(b[1])<<8|int(b[2]))
+	return code[:6]
+}
+
+func sendOTP(c *gin.Context) {
+	var req models.AuthSendOTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid request"})
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Email and password required"})
+		return
+	}
+
+	otpCode := generateOTP()
+	sessionIDBytes := make([]byte, 32)
+	rand.Read(sessionIDBytes)
+	sessionID := base64.URLEncoding.EncodeToString(sessionIDBytes)
+	now := float64(time.Now().Unix())
+
+	sessionMutex.Lock()
+	otpStore[sessionID] = &OTPSession{
+		SessionID: sessionID,
+		Email:     req.Email,
+		Password:  req.Password,
+		OTPCode:   otpCode,
+		Status:    "pending",
+		CreatedAt: now,
+		ExpiresAt: now + 600,
+	}
+	sessionMutex.Unlock()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "success",
+		"otp":        otpCode,
+		"session_id": sessionID,
+	})
+}
+
+func verifyPage(c *gin.Context) {
+	sessionID := c.Query("session_id")
+	if sessionID == "" {
+		renderDevicePage(c, "Missing session ID", "", true, false)
+		return
+	}
+
+	sessionMutex.RLock()
+	session, exists := otpStore[sessionID]
+	sessionMutex.RUnlock()
+
+	if !exists {
+		renderDevicePage(c, "Invalid or expired session", "", true, false)
+		return
+	}
+
+	now := float64(time.Now().Unix())
+	if session.ExpiresAt <= now {
+		renderDevicePage(c, "Session expired. Please restart registration.", "", true, false)
+		return
+	}
+
+	if session.Status == "complete" {
+		renderDevicePage(c, "Registration already completed. Return to CLI.", "", false, false)
+		return
+	}
+
+	renderDevicePage(c, "Enter the verification code shown in your CLI", "", false, true)
+}
+
+func verifyPageSubmit(c *gin.Context) {
+	sessionID := c.Query("session_id")
+	otpCode := c.PostForm("code")
+
+	if sessionID == "" {
+		renderDevicePage(c, "Missing session ID", "", true, false)
+		return
+	}
+
+	if otpCode == "" {
+		renderDevicePage(c, "Please enter the verification code", "", true, true)
+		return
+	}
+
+	sessionMutex.Lock()
+	session, exists := otpStore[sessionID]
+	if !exists {
+		sessionMutex.Unlock()
+		renderDevicePage(c, "Session not found or expired", "", true, false)
+		return
+	}
+	sessionMutex.Unlock()
+
+	now := float64(time.Now().Unix())
+	if session.ExpiresAt <= now {
+		renderDevicePage(c, "Session expired. Please restart registration.", "", true, false)
+		return
+	}
+
+	if session.OTPCode != otpCode {
+		renderDevicePage(c, "Invalid verification code. Please try again.", "", true, true)
+		return
+	}
+
+	if firebaseAPIKey == "" {
+		renderDevicePage(c, "Firebase API key not configured", "", true, false)
+		return
+	}
+
+	payload := map[string]interface{}{
+		"email":             session.Email,
+		"password":          session.Password,
+		"returnSecureToken": true,
+	}
+
+	jsonData, _ := json.Marshal(payload)
+	reqHTTP, _ := http.NewRequest("POST", identityURL("accounts:signUp"), bytes.NewBuffer(jsonData))
+	reqHTTP.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(reqHTTP)
+	if err != nil {
+		renderDevicePage(c, "Registration failed: "+err.Error(), "", true, false)
+		return
+	}
+	defer resp.Body.Close()
+
+	data, err := parseFirebaseResponse(resp)
+	if err != nil {
+		renderDevicePage(c, "Registration failed: "+err.Error(), "", true, false)
+		return
+	}
+
+	authResp := parseAuthResponse(data)
+	tokens := map[string]interface{}{
+		"id_token":      authResp.IDToken,
+		"refresh_token": authResp.RefreshToken,
+		"expires_in":    authResp.ExpiresIn,
+	}
+	if authResp.Email != nil {
+		tokens["email"] = *authResp.Email
+	}
+	if authResp.LocalID != nil {
+		tokens["local_id"] = *authResp.LocalID
+	}
+
+	sessionMutex.Lock()
+	session.Status = "complete"
+	session.Tokens = tokens
+	sessionMutex.Unlock()
+
+	renderDevicePage(c, "Registration complete! You can now return to the CLI.", "", false, false)
+}
+
+func pollRegistration(c *gin.Context) {
+	sessionID := c.Query("session_id")
+	if sessionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Missing session_id"})
+		return
+	}
+
+	sessionMutex.RLock()
+	session, exists := otpStore[sessionID]
+	if !exists {
+		sessionMutex.RUnlock()
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Session not found"})
+		return
+	}
+
+	now := float64(time.Now().Unix())
+	status := session.Status
+	tokens := session.Tokens
+	expiresAt := session.ExpiresAt
+	sessionMutex.RUnlock()
+
+	if expiresAt <= now {
+		sessionMutex.Lock()
+		delete(otpStore, sessionID)
+		sessionMutex.Unlock()
+		c.JSON(http.StatusGone, gin.H{"detail": "Session expired"})
+		return
+	}
+
+	if status == "pending" {
+		c.JSON(http.StatusAccepted, gin.H{"status": "pending"})
+		return
+	}
+
+	if status == "complete" {
+		sessionMutex.Lock()
+		delete(otpStore, sessionID)
+		sessionMutex.Unlock()
+		c.JSON(http.StatusOK, tokens)
+		return
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid session state"})
 }
 
 func registerUser(c *gin.Context) {
