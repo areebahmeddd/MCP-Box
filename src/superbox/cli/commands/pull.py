@@ -46,7 +46,6 @@ def pull(name: str, client: str) -> None:
                 click.echo(f"   - {server_name}")
             sys.exit(1)
 
-        server_data = servers[name]
         target = client.lower()
 
         path = config_path(target)
@@ -68,39 +67,18 @@ def pull(name: str, client: str) -> None:
             "chatgpt": "ChatGPT",
         }.get(target, target)
 
-        if target == "vscode":
-            vscode_config.setdefault("servers", {})
-            if name in vscode_config.get("servers", {}):
-                click.echo(
-                    f"Warning: Server '{name}' already exists in {display_target} configuration"
-                )
-                if not click.confirm("Do you want to overwrite it?"):
-                    click.echo("Aborted")
-                    sys.exit(0)
+        config_section = "servers" if target == "vscode" else "mcpServers"
+        vscode_config.setdefault(config_section, {})
 
-            vscode_config["servers"][name] = {
-                "url": server_url,
-            }
-        else:
-            vscode_config.setdefault("mcpServers", {})
-            if name in vscode_config.get("mcpServers", {}):
-                click.echo(
-                    f"Warning: Server '{name}' already exists in {display_target} configuration"
-                )
-                if not click.confirm("Do you want to overwrite it?"):
-                    click.echo("Aborted")
-                    sys.exit(0)
+        if name in vscode_config.get(config_section, {}):
+            click.echo(f"Warning: Server '{name}' already exists in {display_target} configuration")
+            if not click.confirm("Do you want to overwrite it?"):
+                click.echo("Aborted")
+                sys.exit(0)
 
-            entry = {
-                "command": "curl",
-                "args": ["-X", "GET", server_url],
-                "metadata": {
-                    "repository": server_data.get("repository", {}),
-                    "description": server_data.get("description", ""),
-                    "tools": server_data.get("tools", []),
-                },
-            }
-            vscode_config["mcpServers"][name] = entry
+        vscode_config[config_section][name] = {
+            "url": server_url,
+        }
 
         with open(path, "w") as f:
             json.dump(vscode_config, f, indent=2)
