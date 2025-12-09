@@ -202,7 +202,7 @@ def register(email: str, password: str) -> None:
     try:
         cfg = _config_load()
         base_url = cfg.SUPERBOX_API_URL.rstrip("/")
-        
+
         send_response = requests.post(
             f"{base_url}/auth/register/send-otp",
             json={"email": email, "password": password},
@@ -217,34 +217,34 @@ def register(email: str, password: str) -> None:
         data = send_response.json()
         otp_code = data.get("otp")
         session_id = data.get("session_id")
-        
+
         click.echo(f"\nYour verification code: {otp_code}")
-        
+
         verification_url = f"{base_url}/auth/register/verify-page?session_id={session_id}"
         click.echo(f"Opening browser for verification: {verification_url}")
-        
+
         opened = webbrowser.open(verification_url)
         if not opened:
             click.echo("Could not open browser. Please open the URL manually.")
-        
+
         click.echo("Waiting for verification...")
         start_time = time.time()
         timeout = 300
-        
+
         while True:
             if time.time() - start_time >= timeout:
                 click.echo("\nVerification timed out.")
                 sys.exit(1)
-            
+
             poll_response = requests.get(
                 f"{base_url}/auth/register/poll?session_id={session_id}",
                 timeout=30,
             )
-            
+
             if poll_response.status_code == 202:
                 time.sleep(3)
                 continue
-            
+
             if poll_response.status_code == 200:
                 result = poll_response.json()
                 _save_auth(
@@ -259,11 +259,11 @@ def register(email: str, password: str) -> None:
                 )
                 click.echo("\nRegistration successful. You are now logged in.")
                 return
-            
+
             error = _error_text(poll_response)
             click.echo(f"\nVerification failed: {error}")
             sys.exit(1)
-            
+
     except Exception as exc:
         click.echo(f"\nError: {exc}")
         sys.exit(1)

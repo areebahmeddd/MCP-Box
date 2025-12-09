@@ -13,17 +13,8 @@ import boto3
 from typing import Any, Dict
 
 
-def get_env(key: str) -> str:
-    """Read required environment variable."""
-    value = os.environ.get(key)
-    if not value:
-        raise ValueError(f"Missing required environment variable: {key}")
-    return value
-
-
-# Configuration
-AWS_REGION = get_env("AWS_REGION")
-S3_BUCKET = get_env("S3_BUCKET_NAME")
+AWS_REGION = "ap-south-1"
+S3_BUCKET = "superbox-mcp-registry"
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:

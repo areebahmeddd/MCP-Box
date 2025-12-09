@@ -168,6 +168,8 @@ def push(
                 "name": name,
                 "repository": {"type": "git", "url": repo_url},
                 "description": config.get("description", ""),
+                "entrypoint": config.get("entrypoint", "main.py"),
+                "lang": config.get("lang", "python"),
                 "tools": tool_info.get("tool_names", []),
                 "tool_count": tool_info.get("tool_count", 0),
                 "security_report": security_report,

@@ -1,9 +1,5 @@
-import os
 import re
 import time
-import shutil
-import tempfile
-import subprocess
 from datetime import datetime
 
 import requests
@@ -53,42 +49,20 @@ def create_project(project_key, project_name, sonar_host, sonar_token, sonar_org
         return False
 
 
-def clone_repository(repo_url, target_dir):
-    result = subprocess.run(
-        ["git", "clone", "--depth", "1", repo_url, target_dir], capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        return False
+def bind_repository(project_key, owner, repo, sonar_host, sonar_token, sonar_org):
+    url = f"{sonar_host}/api/alm_settings/set_github_binding"
+    headers = {"Authorization": f"Bearer {sonar_token}"}
+    params = {
+        "almSetting": "github",
+        "project": project_key,
+        "repository": f"{owner}/{repo}",
+    }
 
-    return True
-
-
-def run_scanner(repo_path, project_key, sonar_host, sonar_token, sonar_org):
-    original_dir = os.getcwd()
-    os.chdir(repo_path)
     try:
-        result = subprocess.run(
-            [
-                "sonar-scanner",
-                f"-Dsonar.projectKey={project_key}",
-                f"-Dsonar.organization={sonar_org}",
-                "-Dsonar.sources=.",
-                "-Dsonar.sourceEncoding=UTF-8",
-                f"-Dsonar.host.url={sonar_host}",
-                f"-Dsonar.login={sonar_token}",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode != 0:
-            return False
-
-        return True
-    except subprocess.TimeoutExpired:
+        response = requests.post(url, params=params, headers=headers, timeout=30)
+        return response.status_code in [200, 204]
+    except requests.exceptions.RequestException:
         return False
-    finally:
-        os.chdir(original_dir)
 
 
 def wait_analysis(project_key, sonar_host, sonar_token, max_wait=60):
@@ -217,7 +191,6 @@ def fetch_measures(project_key, sonar_host, sonar_token):
 
 
 def create_report(repo_name, project_key, issues, hotspots, metrics, sonar_host):
-    """Create report data structure (no file generation, data goes to S3)"""
     bugs = [i for i in issues if i.get("type") == "BUG"]
     vulnerabilities = [i for i in issues if i.get("type") == "VULNERABILITY"]
     code_smells = [i for i in issues if i.get("type") == "CODE_SMELL"]
@@ -257,58 +230,33 @@ def run_analysis(repo_url, env_path=None):
     SONAR_TOKEN = cfg.SONAR_TOKEN
     SONAR_ORGANIZATION = cfg.SONAR_ORGANIZATION
 
-    print("[Sonar] Starting analysis")
     owner, repo = extract_repository(repo_url)
     if not owner or not repo:
         raise ValueError("Error: Could not parse repository URL")
 
     repo_name = f"{owner}_{repo}"
     project_key = generate_key(owner, repo, SONAR_ORGANIZATION)
-    print(f"[Sonar] Project {owner}/{repo} (key={project_key})")
+    print(f"[Sonar] Analyzing {owner}/{repo}")
 
-    tmp_dir = tempfile.mkdtemp(prefix="sonarcloud_auto_")
-    repo_path = os.path.join(tmp_dir, "repo")
+    project_created = create_project(
+        project_key, f"{owner}/{repo}", SONAR_HOST, SONAR_TOKEN, SONAR_ORGANIZATION
+    )
 
-    try:
-        if not create_project(
-            project_key, f"{owner}/{repo}", SONAR_HOST, SONAR_TOKEN, SONAR_ORGANIZATION
-        ):
-            pass
+    if project_created:
+        bind_repository(project_key, owner, repo, SONAR_HOST, SONAR_TOKEN, SONAR_ORGANIZATION)
+        time.sleep(5)
 
-        print("[Sonar] Cloning repository")
-        if not clone_repository(repo_url, repo_path):
-            raise RuntimeError("Failed to clone repository")
+    issues = fetch_issues(project_key, SONAR_HOST, SONAR_TOKEN)
+    hotspots = fetch_hotspots(project_key, SONAR_HOST, SONAR_TOKEN)
+    metrics = fetch_measures(project_key, SONAR_HOST, SONAR_TOKEN)
 
-        print("[Sonar] Running scanner")
-        if not run_scanner(repo_path, project_key, SONAR_HOST, SONAR_TOKEN, SONAR_ORGANIZATION):
-            raise RuntimeError("Failed to run scanner")
-        print("[Sonar] Analysis submitted")
+    report_data = create_report(repo_name, project_key, issues, hotspots, metrics, SONAR_HOST)
 
-        print("[Sonar] Waiting for analysis results")
-        wait_analysis(project_key, SONAR_HOST, SONAR_TOKEN)
-        print("[Sonar] Fetching issues, hotspots, and metrics")
-        issues = fetch_issues(project_key, SONAR_HOST, SONAR_TOKEN)
-        hotspots = fetch_hotspots(project_key, SONAR_HOST, SONAR_TOKEN)
-        metrics = fetch_measures(project_key, SONAR_HOST, SONAR_TOKEN)
-
-        report_data = create_report(repo_name, project_key, issues, hotspots, metrics, SONAR_HOST)
-        total_issues = len(issues)
-        total_hotspots = len(hotspots)
-        coverage = metrics.get("coverage", "N/A")
-        print(
-            f"[Sonar] Results: issues={total_issues}, hotspots={total_hotspots}, coverage={coverage}"
-        )
-
-        return {
-            "success": True,
-            "report_data": report_data,
-            "project_key": project_key,
-            "repo_url": repo_url,
-            "owner": owner,
-            "repo": repo,
-        }
-
-    finally:
-        os.chdir("/")
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        print("[Sonar] Cleanup complete")
+    return {
+        "success": True,
+        "report_data": report_data,
+        "project_key": project_key,
+        "repo_url": repo_url,
+        "owner": owner,
+        "repo": repo,
+    }

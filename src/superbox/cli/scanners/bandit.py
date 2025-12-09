@@ -97,14 +97,7 @@ def run_scan(repo_path: str) -> Dict[str, Any]:
             "issues": [],
         }
     except FileNotFoundError:
-        print("[Bandit] Bandit not installed")
-        return {
-            "success": False,
-            "error": "Bandit not installed",
-            "total_issues": 0,
-            "severity_counts": {"high": 0, "medium": 0, "low": 0},
-            "issues": [],
-        }
+        raise RuntimeError("bandit is not installed")
     except Exception as e:
         print(f"[Bandit] Error: {str(e)}")
         return {

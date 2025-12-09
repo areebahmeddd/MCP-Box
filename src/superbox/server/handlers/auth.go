@@ -923,11 +923,6 @@ func verifyPageSubmit(c *gin.Context) {
 		return
 	}
 
-	if firebaseAPIKey == "" {
-		renderDevicePage(c, "Firebase API key not configured", "", true, false)
-		return
-	}
-
 	payload := map[string]interface{}{
 		"email":             session.Email,
 		"password":          session.Password,

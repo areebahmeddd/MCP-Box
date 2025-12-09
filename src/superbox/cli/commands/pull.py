@@ -56,9 +56,9 @@ def pull(name: str, client: str) -> None:
             with open(path, "r") as f:
                 vscode_config = json.load(f)
         else:
-            vscode_config = {"mcpServers": {}}
+            vscode_config = {}
 
-        server_url = f"{lambda_base_url}?mcp_name={name}&s3_bucket={bucket}"
+        server_url = f"{lambda_base_url.rstrip('/')}/{name}"
 
         display_target = {
             "vscode": "VS Code",
@@ -68,31 +68,39 @@ def pull(name: str, client: str) -> None:
             "chatgpt": "ChatGPT",
         }.get(target, target)
 
-        if name in vscode_config.get("mcpServers", {}):
-            click.echo(f"Warning: Server '{name}' already exists in {display_target} configuration")
-            if not click.confirm("Do you want to overwrite it?"):
-                click.echo("Aborted")
-                sys.exit(0)
-
-        entry = {
-            "command": "curl",
-            "args": ["-X", "GET", server_url],
-            "metadata": {
-                "repository": server_data.get("repository", {}),
-                "description": server_data.get("description", ""),
-                "tools": server_data.get("tools", []),
-            },
-        }
-        vscode_config.setdefault("mcpServers", {})
-        vscode_config["mcpServers"][name] = entry
-
         if target == "vscode":
             vscode_config.setdefault("servers", {})
+            if name in vscode_config.get("servers", {}):
+                click.echo(
+                    f"Warning: Server '{name}' already exists in {display_target} configuration"
+                )
+                if not click.confirm("Do you want to overwrite it?"):
+                    click.echo("Aborted")
+                    sys.exit(0)
+
             vscode_config["servers"][name] = {
-                "type": "http",
                 "url": server_url,
-                "gallery": False,
             }
+        else:
+            vscode_config.setdefault("mcpServers", {})
+            if name in vscode_config.get("mcpServers", {}):
+                click.echo(
+                    f"Warning: Server '{name}' already exists in {display_target} configuration"
+                )
+                if not click.confirm("Do you want to overwrite it?"):
+                    click.echo("Aborted")
+                    sys.exit(0)
+
+            entry = {
+                "command": "curl",
+                "args": ["-X", "GET", server_url],
+                "metadata": {
+                    "repository": server_data.get("repository", {}),
+                    "description": server_data.get("description", ""),
+                    "tools": server_data.get("tools", []),
+                },
+            }
+            vscode_config["mcpServers"][name] = entry
 
         with open(path, "w") as f:
             json.dump(vscode_config, f, indent=2)
