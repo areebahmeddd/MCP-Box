@@ -50,7 +50,7 @@ func init() {
 	githubClientID = os.Getenv("GITHUB_CLIENT_ID")
 	githubClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
 
-	templatePath := filepath.Join("src", "superbox", "server", "templates", "auth.html")
+	templatePath := filepath.Join("templates", "auth.html")
 	tmpl, err := template.ParseFiles(templatePath)
 	if err == nil {
 		authTemplate = tmpl
@@ -472,7 +472,7 @@ func devicePoll(c *gin.Context) {
 }
 
 func deviceForm(c *gin.Context) {
-	message := c.DefaultQuery("message", "Enter the device code shown in your CLI.")
+	message := c.DefaultQuery("message", "Enter the device code shown in your CLI")
 	errorFlag := c.Query("error") == "true"
 	code := c.DefaultQuery("code", "")
 	renderDevicePage(c, message, code, errorFlag, true)

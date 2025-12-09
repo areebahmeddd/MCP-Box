@@ -104,7 +104,6 @@
 
       .btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 10px 25px rgba(255, 82, 82, 0.28);
       }
 
       .status {
@@ -128,9 +127,9 @@
   <body>
     <main class="card">
       <h1>Device Authentication</h1>
-      <p class="message{% if error %} error{% endif %}">{{ message }}</p>
+      <p class="message{{if .error}} error{{end}}">{{.message}}</p>
 
-      {% if show_form %}
+      {{if .show_form}}
       <form method="post">
         <div>
           <label for="code">Device code</label>
@@ -138,7 +137,7 @@
             type="text"
             id="code"
             name="code"
-            value="{{ code }}"
+            value="{{.code}}"
             autocomplete="one-time-code"
             inputmode="latin"
             spellcheck="false"
@@ -148,14 +147,14 @@
         </div>
         <button class="btn" type="submit">Continue</button>
       </form>
-      {% else %}
+      {{else}}
       <div class="status">
         <span class="status-badge">✓ Authenticated</span>
         <p class="message">
-          You can return to the CLI window to finish signing in.
+          You can return to the CLI window to finish signing in
         </p>
       </div>
-      {% endif %}
+      {{end}}
     </main>
   </body>
 </html>

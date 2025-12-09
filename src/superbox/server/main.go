@@ -18,6 +18,11 @@ func main() {
 
 	router := gin.Default()
 
+	router.LoadHTMLFiles(
+		"templates/index.html",
+		"templates/auth.html",
+	)
+
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
 	config.AllowCredentials = true
