@@ -1,3 +1,18 @@
+<div align="center">
+
+```text
+                          _                      _
+                         | |                    (_)
+___ _   _ _ __   ___ _ __| |__   _____  __  __ _ _
+/ __| | | | '_ \ / _ \ '__| '_ \ / _ \ \/ / / _` | |
+\__ \ |_| | |_) |  __/ |  | |_) | (_) >  < | (_| | |
+|___/\__,_| .__/ \___|_|  |_.__/ \___/_/\_(_)__,_|_|
+         | |
+         |_|
+```
+
+</div>
+
 # 🧰 SuperBox
 
 **Superbox** (inspired by [Docker Hub](https://hub.docker.com)) helps you discover, deploy, and test MCPs in isolated sandboxes. It includes:

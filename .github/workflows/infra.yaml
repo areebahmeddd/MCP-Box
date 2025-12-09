@@ -1,0 +1,36 @@
+name: Deploy AWS Infrastructure
+
+on:
+  push:
+    branches:
+      - prod
+    paths:
+      - src/superbox/server/**
+      - Dockerfile
+      - .github/workflows/server.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  infra-deploy:
+    name: Trigger Infrastructure Deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger SuperBox-Infra Workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.INFRA_REPO_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'areebahmeddd',
+              repo: 'SuperBox-Infra',
+              workflow_id: 'deploy.yml',
+              ref: 'main'
+            });
+
+            console.log('Infrastructure deployment triggered successfully!');
+            console.log('Triggered by server commit:', context.sha);
+            console.log('Repository: superbox.ai');
