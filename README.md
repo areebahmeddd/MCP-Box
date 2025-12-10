@@ -37,6 +37,7 @@ For setup and deployment, see [docs/INSTALL.md](docs/INSTALL.md).
 - **One‑Command Publish**: `superbox push` scans, discovers tools, and uploads a unified record to S3.
 - **Client Auto‑Config**: `superbox pull --client cursor|vscode|...` writes correct MCP config pointing to the Lambda endpoint.
 - **Terminal Runner**: `superbox run --name <server>` starts an interactive prompt against the Lambda executor.
+- **CloudWatch Logs**: `superbox logs --name <server>` fetches execution logs from AWS with real-time follow support.
 - **Tool Discovery**: Regex‑based discovery across Python code and optional Node `package.json` definitions.
 
 > NOTE: The Lambda executor currently supports Python + Npm MCP servers.
@@ -482,6 +483,42 @@ This server is being tested directly and has NOT gone through:
   • Security scanning (SonarQube, Bandit, GitGuardian)
   • Quality checks
   • Registry validation
+```
+
+### `superbox logs`
+
+Fetch and display execution logs for an MCP server from AWS CloudWatch.
+
+**Usage:**
+
+```bash
+superbox logs --name NAME [--follow]
+```
+
+**Options:**
+
+- `--name NAME` – MCP server name to fetch logs for (required)
+- `--follow`, `-f` – Follow log output in real-time
+
+**Example:**
+
+```bash
+$ superbox logs --name my-mcp
+Fetching server 'my-mcp' from registry...
+Server found: My awesome MCP server
+Fetching recent logs...
+
+================================================================================
+Logs for MCP server (showing 23 entries)
+================================================================================
+
+[2025-12-10 14:30:15] Request received: my-mcp
+[2025-12-10 14:30:16] Repository ready: /tmp/mcp_my-mcp_abc123/repo
+[2025-12-10 14:30:18] MCP server stderr: Loading tools...
+[2025-12-10 14:30:19] Request completed successfully
+
+# Follow logs in real-time
+$ superbox logs --name my-mcp --follow
 ```
 
 ## 📜 License

@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "python-dotenv>=1.2.1",
+    "python-dotenv>=0.21.0",
     "boto3>=1.40.64",
     "pydantic>=2.12.3",
 ]

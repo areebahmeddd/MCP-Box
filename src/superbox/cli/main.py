@@ -7,6 +7,7 @@ from superbox.cli.commands.auth import auth
 from superbox.cli.commands.push import push
 from superbox.cli.commands.pull import pull
 from superbox.cli.commands.run import run
+from superbox.cli.commands.logs import logs
 from superbox.cli.commands.search import search
 from superbox.cli.commands.inspect import inspect
 from superbox.cli.commands.test import test
@@ -43,6 +44,7 @@ cli.add_command(run)
 cli.add_command(search)
 cli.add_command(inspect)
 cli.add_command(test)
+cli.add_command(logs)
 
 
 def main():
