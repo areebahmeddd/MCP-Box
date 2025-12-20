@@ -1,6 +1,10 @@
-# SuperBox – Installation & Quick Start
+# SuperBox – Installation Guide
 
-> Works on Windows, macOS, and Linux. Examples below use Windows PowerShell; adapt paths/activate scripts for your OS.
+**📖 Complete Documentation:** [https://superbox.mintlify.app](https://acm-aa28ebf6.mintlify.app)
+
+> For detailed setup guides, API references, CLI usage, examples, and troubleshooting, visit our documentation site.
+
+> Works on Windows, macOS, and Linux. Commands below use Windows PowerShell; adapt paths/activate scripts for your OS.
 
 ## 1) Prerequisites
 
@@ -93,50 +97,15 @@ If `.env` is incomplete or missing, server health will be degraded and routes de
 
 ## 6) Use the CLI
 
-General help:
+> **📖 For complete CLI usage, examples, and command references:** [https://superbox.mintlify.app/cli](https://acm-aa28ebf6.mintlify.app/cli)
+
+**Quick verification:**
 
 ```powershell
 superbox --help
 ```
 
-Initialize a project config:
-
-```powershell
-superbox init
-```
-
-Push a server definition (scan + upload to S3):
-
-```powershell
-superbox push --name <server-name>
-# The repository URL is read from superbox.json created by `superbox init`
-```
-
-Pull and configure client MCP settings:
-
-```powershell
-superbox pull --name <server-name> --client cursor
-# Supported clients: vscode | cursor | windsurf | claude | chatgpt
-```
-
-Run a server interactively from the terminal:
-
-```powershell
-superbox run --name <server-name>
-# Type your prompt at "> ", e.g., "What's the weather today?" and view the response
-```
-
-Search available servers:
-
-```powershell
-superbox search
-```
-
-Inspect a server (open repository URL in browser):
-
-```powershell
-superbox inspect --name <server-name>
-```
+All CLI commands, options, and detailed examples are available in our [CLI documentation](https://acm-aa28ebf6.mintlify.app/cli/introduction).
 
 ## 7) Troubleshooting
 

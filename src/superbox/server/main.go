@@ -12,11 +12,12 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
+	if err := godotenv.Load("../../../.env"); err != nil {
+		if err := godotenv.Load(); err != nil {
+			log.Println("No .env file found, using environment variables")
+		}
 	}
 
-	// Initialize config after .env is loaded
 	handlers.InitConfig()
 
 	router := gin.Default()
@@ -37,6 +38,7 @@ func main() {
 	handlers.RegisterAuth(api)
 	handlers.RegisterServers(api)
 	handlers.RegisterPayment(api)
+	handlers.RegisterPlayground(api)
 
 	handlers.RegisterHealth(router)
 
