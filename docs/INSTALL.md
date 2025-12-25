@@ -1,6 +1,6 @@
 # SuperBox – Installation Guide
 
-**📖 Complete Documentation:** [https://superbox.mintlify.app](https://acm-aa28ebf6.mintlify.app)
+**📖 Complete Documentation:** [https://superbox.1mindlabs.org/docs](https://acm-aa28ebf6.mintlify.app)
 
 > For detailed setup guides, API references, CLI usage, examples, and troubleshooting, visit our documentation site.
 
@@ -47,14 +47,12 @@ Create a `.env` in the working directory (the server loads it at startup; CLI co
 # SuperBox API (required for auth/device login callbacks)
 SUPERBOX_API_URL=http://localhost:8000/api/v1
 
-# AWS (required for S3-backed registry)
+# AWS (required for S3-backed registry and WebSocket executor)
 AWS_REGION=ap-south-1
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 S3_BUCKET_NAME=your-bucket
-
-# Lambda base URL for the executor endpoint (API Gateway URL)
-LAMBDA_BASE_URL=https://your-api.example.com/run
+WEBSOCKET_URL=wss://api-gateway.execute-api.region.amazonaws.com/production
 
 # Scanners (required for `superbox push`)
 SONAR_TOKEN=...
@@ -97,7 +95,7 @@ If `.env` is incomplete or missing, server health will be degraded and routes de
 
 ## 6) Use the CLI
 
-> **📖 For complete CLI usage, examples, and command references:** [https://superbox.mintlify.app/cli](https://acm-aa28ebf6.mintlify.app/cli)
+> **📖 For complete CLI usage, examples, and command references:** [https://superbox.1mindlabs.org/docs/cli](https://acm-aa28ebf6.mintlify.app/cli)
 
 **Quick verification:**
 

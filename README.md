@@ -44,7 +44,7 @@ Why this project:
 
 **For complete documentation, setup guides, API references, and CLI usage:**
 
-🔗 **[https://superbox.mintlify.app](https://acm-aa28ebf6.mintlify.app)**
+🔗 **[https://superbox.1mindlabs.org/docs](https://acm-aa28ebf6.mintlify.app)**
 
 ## 🗂️ Project Structure
 
@@ -61,8 +61,10 @@ Why this project:
 │       │   ├── models/         # Request/response types
 │       │   ├── helpers/        # Python S3 helper
 │       │   └── templates/      # Landing page
-│       └── shared/             # Config, models, S3 utils
-├── lambda.py                   # AWS Lambda handler (executor)
+│       ├── shared/             # Config, models, S3 utils
+│       └── aws/                # AWS Lambda & WebSocket proxy
+│           ├── lambda.py       # Lambda handler (WebSocket executor)
+│           └── proxy.py        # Local stdio-WebSocket bridge
 ├── pyproject.toml              # Project metadata & dependencies
 ├── Dockerfile                  # Server container
 ├── docker-compose.yaml         # Optional local stack
@@ -73,7 +75,7 @@ Why this project:
 
 The HTTP API provides endpoints for server management, authentication, and payments.
 
-For complete API documentation, see [https://superbox.mintlify.app/api](https://acm-aa28ebf6.mintlify.app/api)
+For complete API documentation, see [https://superbox.1mindlabs.org/docs/api](https://acm-aa28ebf6.mintlify.app/api)
 
 ## 🔧 CLI Overview
 
@@ -91,17 +93,17 @@ The SuperBox CLI provides commands for authentication, server management, and te
 
 - `superbox init` – Initialize a new MCP server project
 - `superbox push` – Publish server to registry
-- `superbox pull` – Download and configure server
+- `superbox pull` – Download and configure server for AI clients
 - `superbox search` – Search for servers in registry
 - `superbox inspect` – View server details and security report
-- `superbox test` – Test server locally
+- `superbox test` – Test server directly from repository (without registry)
 
 **Execution & Monitoring:**
 
 - `superbox run` – Run server in interactive mode
 - `superbox logs` – View server execution logs
 
-For detailed CLI documentation and usage examples, see [https://superbox.mintlify.app/cli](https://acm-aa28ebf6.mintlify.app/cli)
+For detailed CLI documentation and usage examples, see [https://superbox.1mindlabs.org/docs/cli](https://acm-aa28ebf6.mintlify.app/cli)
 
 ## 📦 Installation
 

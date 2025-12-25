@@ -101,6 +101,7 @@ type CreateServerRequest struct {
 	Repository  Repository              `json:"repository"`
 	Pricing     Pricing                 `json:"pricing"`
 	Tools       *map[string]interface{} `json:"tools,omitempty"`
+	Metadata    *map[string]interface{} `json:"metadata,omitempty"`
 }
 
 type UpdateServerRequest struct {
@@ -114,6 +115,7 @@ type UpdateServerRequest struct {
 	Repository     *Repository             `json:"repository,omitempty"`
 	Pricing        *Pricing                `json:"pricing,omitempty"`
 	Tools          *map[string]interface{} `json:"tools,omitempty"`
+	Metadata       *map[string]interface{} `json:"metadata,omitempty"`
 	SecurityReport *map[string]interface{} `json:"security_report,omitempty"`
 }
 

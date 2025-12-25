@@ -5,9 +5,9 @@ on:
     branches:
       - prod
     paths:
-      - src/superbox/server/**
-      - Dockerfile
-      - .github/workflows/server.yaml
+      - src/superbox/aws/lambda.py
+      - src/superbox/aws/proxy.py
+      - .github/workflows/infra.yaml
   workflow_dispatch:
 
 permissions:
@@ -25,12 +25,12 @@ jobs:
           github-token: ${{ secrets.INFRA_REPO_TOKEN }}
           script: |
             await github.rest.actions.createWorkflowDispatch({
-              owner: 'areebahmeddd',
+              owner: 'arush3218',
               repo: 'SuperBox-Infra',
               workflow_id: 'deploy.yml',
               ref: 'main'
             });
 
             console.log('Infrastructure deployment triggered successfully!');
-            console.log('Triggered by server commit:', context.sha);
-            console.log('Repository: superbox.ai');
+            console.log('Triggered by: ', context.sha);
+            console.log('Repository: ', context.repo.repo);

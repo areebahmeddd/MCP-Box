@@ -205,6 +205,10 @@ func createServer(c *gin.Context) {
 		newServer["tools"] = *req.Tools
 	}
 
+	if req.Metadata != nil {
+		newServer["metadata"] = *req.Metadata
+	}
+
 	_, err = callPythonS3("upsert_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": req.Name,
@@ -305,6 +309,9 @@ func updateServer(c *gin.Context) {
 	}
 	if req.Tools != nil {
 		updatedData["tools"] = *req.Tools
+	}
+	if req.Metadata != nil {
+		updatedData["metadata"] = *req.Metadata
 	}
 	if req.SecurityReport != nil {
 		updatedData["security_report"] = *req.SecurityReport

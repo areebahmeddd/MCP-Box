@@ -17,7 +17,7 @@ class Config:
         self.AWS_ACCESS_KEY_ID = get_env("AWS_ACCESS_KEY_ID")
         self.AWS_SECRET_ACCESS_KEY = get_env("AWS_SECRET_ACCESS_KEY")
         self.S3_BUCKET_NAME = get_env("S3_BUCKET_NAME")
-        self.LAMBDA_BASE_URL = get_env("LAMBDA_BASE_URL")
+        self.WEBSOCKET_URL = get_env("WEBSOCKET_URL")
 
         # Firebase Configurations
         self.FIREBASE_API_KEY = get_env("FIREBASE_API_KEY")
@@ -46,7 +46,6 @@ class Config:
             "AWS_ACCESS_KEY_ID": self.AWS_ACCESS_KEY_ID,
             "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
             "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
-            "LAMBDA_BASE_URL": self.LAMBDA_BASE_URL,
             "FIREBASE_API_KEY": self.FIREBASE_API_KEY,
             "FIREBASE_PROJECT_ID": self.FIREBASE_PROJECT_ID,
             "RAZORPAY_KEY_ID": self.RAZORPAY_KEY_ID,
@@ -108,7 +107,7 @@ def load_env(env_path: Optional[os.PathLike | str] = None) -> None:
 
 
 def get_env(key: str) -> str:
-    """Get environment variable - raises error if not found"""
+    """Get environment variable - raises error if not found."""
     value = os.environ.get(key)
     if value is None:
         raise ValueError(f"Required environment variable '{key}' not found")

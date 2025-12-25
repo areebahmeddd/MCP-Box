@@ -28,9 +28,9 @@ def pull(name: str, client: str) -> None:
         load_env(env_path)
         cfg = Config()
 
-        lambda_base_url = cfg.LAMBDA_BASE_URL
-        if not lambda_base_url:
-            click.echo("Error: LAMBDA_BASE_URL not found in .env file")
+        ws_url = cfg.WEBSOCKET_URL
+        if not ws_url:
+            click.echo("Error: WEBSOCKET_URL not found in .env file")
             sys.exit(1)
 
         bucket = cfg.S3_BUCKET_NAME
@@ -57,8 +57,6 @@ def pull(name: str, client: str) -> None:
         else:
             vscode_config = {}
 
-        server_url = f"{lambda_base_url.rstrip('/')}/{name}"
-
         display_target = {
             "vscode": "VS Code",
             "cursor": "Cursor",
@@ -76,8 +74,11 @@ def pull(name: str, client: str) -> None:
                 click.echo("Aborted")
                 sys.exit(0)
 
+        ws_url_with_params = f"{ws_url}?name={name}"
         vscode_config[config_section][name] = {
-            "url": server_url,
+            "type": "stdio",
+            "command": "python",
+            "args": ["-m", "superbox.aws.proxy", "--url", ws_url_with_params],
         }
 
         with open(path, "w") as f:
@@ -87,7 +88,7 @@ def pull(name: str, client: str) -> None:
         click.echo("Success!")
         click.echo("=" * 70)
         click.echo(f"\nServer '{name}' added to {display_target} MCP config")
-        click.echo(f"URL: {server_url}")
+        click.echo(f"WebSocket URL: {ws_url_with_params}")
         click.echo(f"\nLocation: {path}")
     except Exception as e:
         click.echo(f"\nError: {str(e)}")
