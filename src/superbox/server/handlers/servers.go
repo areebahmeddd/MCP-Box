@@ -25,27 +25,61 @@ func RegisterServers(api *gin.RouterGroup) {
 	}
 }
 
-func callPythonS3(function string, args map[string]interface{}) (map[string]interface{}, error) {
-	scriptPath := filepath.Join("src", "superbox", "server", "helpers", "s3_helper.py")
+func getPythonCommand() string {
+	venvPaths := []string{
+		filepath.Join("..", "..", "..", ".venv", "Scripts", "python.exe"),
+		filepath.Join("..", "..", "..", "venv", "Scripts", "python.exe"),
+	}
+	for _, venvPath := range venvPaths {
+		if _, err := os.Stat(venvPath); err == nil {
+			return venvPath
+		}
+	}
+	return "python"
+}
 
-	argsJSON, err := json.Marshal(map[string]interface{}{
-		"function": function,
-		"args":     args,
-	})
+func findHelperScript(helperName string) (string, error) {
+	scriptPath := filepath.Join("helpers", helperName)
+	if _, err := os.Stat(scriptPath); err != nil {
+		if exe, err := os.Executable(); err == nil {
+			scriptPath = filepath.Join(filepath.Dir(exe), "helpers", helperName)
+		}
+		if _, err := os.Stat(scriptPath); err != nil {
+			return "", fmt.Errorf("helper script %s not found", helperName)
+		}
+	}
+	return scriptPath, nil
+}
+
+func callPythonHelper(helperName string, payload map[string]interface{}) (map[string]interface{}, error) {
+	scriptPath, err := findHelperScript(helperName)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd := exec.Command("python", scriptPath, string(argsJSON))
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	pythonCmd := getPythonCommand()
+	cmd := exec.Command(pythonCmd, scriptPath, string(payloadJSON))
 	cmd.Env = os.Environ()
 	output, err := cmd.Output()
+
+	if err != nil && pythonCmd == "python" {
+		cmd = exec.Command("python3", scriptPath, string(payloadJSON))
+		cmd.Env = os.Environ()
+		output, err = cmd.Output()
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("python s3 call failed: %v", err)
+		return nil, fmt.Errorf("python execution failed: %v; output: %s", err, string(output))
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(output, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse python output: %v", err)
+		return nil, fmt.Errorf("invalid json response: %v; raw: %s", err, string(output))
 	}
 
 	if errMsg, ok := result["error"].(string); ok {
@@ -55,11 +89,40 @@ func callPythonS3(function string, args map[string]interface{}) (map[string]inte
 	return result, nil
 }
 
+func callS3Helper(function string, args map[string]interface{}) (map[string]interface{}, error) {
+	return callPythonHelper("s3_helper.py", map[string]interface{}{
+		"function": function,
+		"args":     args,
+	})
+}
+
+func callSecurityHelper(repoURL, serverName string) (map[string]interface{}, error) {
+	result, err := callPythonHelper("security_helper.py", map[string]interface{}{
+		"function": "scan_repository",
+		"args": map[string]interface{}{
+			"repo_url":    repoURL,
+			"server_name": serverName,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if success, ok := result["success"].(bool); !ok || !success {
+		if errMsg, ok := result["error"].(string); ok {
+			return nil, fmt.Errorf("security scan failed: %s", errMsg)
+		}
+		return nil, fmt.Errorf("security scan failed")
+	}
+
+	return result, nil
+}
+
 func getServer(c *gin.Context) {
 	serverName := c.Param("server_name")
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 
-	result, err := callPythonS3("get_server", map[string]interface{}{
+	result, err := callS3Helper("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})
@@ -80,16 +143,39 @@ func getServer(c *gin.Context) {
 		return
 	}
 
+	serverInfo := map[string]interface{}{
+		"name":            server["name"],
+		"version":         server["version"],
+		"description":     server["description"],
+		"author":          server["author"],
+		"lang":            server["lang"],
+		"license":         server["license"],
+		"entrypoint":      server["entrypoint"],
+		"repository":      server["repository"],
+		"tools":           server["tools"],
+		"security_report": server["security_report"],
+		"meta":            server["meta"],
+	}
+
+	if pricing, ok := server["pricing"].(map[string]interface{}); ok && pricing != nil {
+		serverInfo["pricing"] = pricing
+	}
+
+	if homepage, ok := server["homepage"]; ok && homepage != nil {
+		serverInfo["homepage"] = homepage
+	}
+
 	c.JSON(http.StatusOK, models.ServerResponse{
 		Status: "success",
-		Server: server,
+		Server: serverInfo,
 	})
 }
 
 func listServers(c *gin.Context) {
 	bucketName := os.Getenv("S3_BUCKET_NAME")
+	authorFilter := c.Query("author")
 
-	result, err := callPythonS3("list_servers", map[string]interface{}{
+	result, err := callS3Helper("list_servers", map[string]interface{}{
 		"bucket_name": bucketName,
 	})
 	if err != nil {
@@ -117,32 +203,27 @@ func listServers(c *gin.Context) {
 			continue
 		}
 
-		serverInfo := map[string]interface{}{
-			"name":        server["name"],
-			"version":     server["version"],
-			"description": server["description"],
-			"author":      server["author"],
-			"lang":        server["lang"],
-			"license":     server["license"],
-			"entrypoint":  server["entrypoint"],
-			"repository":  server["repository"],
+		if authorFilter != "" {
+			if author, ok := server["author"].(string); !ok || author != authorFilter {
+				continue
+			}
 		}
 
-		if tools, ok := server["tools"].(map[string]interface{}); ok && tools != nil {
-			serverInfo["tools"] = tools
+		serverInfo := map[string]interface{}{
+			"name":            server["name"],
+			"version":         server["version"],
+			"description":     server["description"],
+			"author":          server["author"],
+			"lang":            server["lang"],
+			"license":         server["license"],
+			"entrypoint":      server["entrypoint"],
+			"repository":      server["repository"],
+			"tools":           server["tools"],
+			"security_report": server["security_report"],
 		}
 
 		if pricing, ok := server["pricing"].(map[string]interface{}); ok && pricing != nil {
 			serverInfo["pricing"] = pricing
-		} else {
-			serverInfo["pricing"] = map[string]interface{}{
-				"currency": "",
-				"amount":   0,
-			}
-		}
-
-		if securityReport, ok := server["security_report"].(map[string]interface{}); ok && securityReport != nil {
-			serverInfo["security_report"] = securityReport
 		}
 
 		serverList = append(serverList, serverInfo)
@@ -167,7 +248,7 @@ func createServer(c *gin.Context) {
 
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 
-	existing, err := callPythonS3("get_server", map[string]interface{}{
+	existing, err := callS3Helper("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": req.Name,
 	})
@@ -175,6 +256,15 @@ func createServer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
 			"detail": "Server '" + req.Name + "' already exists",
+		})
+		return
+	}
+
+	securityResult, err := callSecurityHelper(req.Repository.URL, req.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"detail": "Security scanning failed: " + err.Error(),
 		})
 		return
 	}
@@ -201,15 +291,24 @@ func createServer(c *gin.Context) {
 		},
 	}
 
-	if req.Tools != nil {
+	if securityReport, ok := securityResult["security_report"]; ok {
+		newServer["security_report"] = securityReport
+	}
+
+	if tools, ok := securityResult["tools"]; ok {
+		newServer["tools"] = tools
+	} else if req.Tools != nil {
 		newServer["tools"] = *req.Tools
 	}
 
 	if req.Metadata != nil {
-		newServer["metadata"] = *req.Metadata
+		metadata := *req.Metadata
+		if homepage, ok := metadata["homepage"]; ok {
+			newServer["homepage"] = homepage
+		}
 	}
 
-	_, err = callPythonS3("upsert_server", map[string]interface{}{
+	_, err = callS3Helper("upsert_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": req.Name,
 		"server_data": newServer,
@@ -242,7 +341,7 @@ func updateServer(c *gin.Context) {
 		return
 	}
 
-	existingResult, err := callPythonS3("get_server", map[string]interface{}{
+	existingResult, err := callS3Helper("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})
@@ -262,7 +361,7 @@ func updateServer(c *gin.Context) {
 
 	newName := serverName
 	if req.Name != nil && *req.Name != serverName {
-		checkResult, _ := callPythonS3("get_server", map[string]interface{}{
+		checkResult, _ := callS3Helper("get_server", map[string]interface{}{
 			"bucket_name": bucketName,
 			"server_name": *req.Name,
 		})
@@ -311,7 +410,10 @@ func updateServer(c *gin.Context) {
 		updatedData["tools"] = *req.Tools
 	}
 	if req.Metadata != nil {
-		updatedData["metadata"] = *req.Metadata
+		metadata := *req.Metadata
+		if homepage, ok := metadata["homepage"]; ok {
+			updatedData["homepage"] = homepage
+		}
 	}
 	if req.SecurityReport != nil {
 		updatedData["security_report"] = *req.SecurityReport
@@ -335,13 +437,13 @@ func updateServer(c *gin.Context) {
 	}
 
 	if newName != serverName {
-		callPythonS3("delete_server", map[string]interface{}{
+		callS3Helper("delete_server", map[string]interface{}{
 			"bucket_name": bucketName,
 			"server_name": serverName,
 		})
 	}
 
-	_, err = callPythonS3("upsert_server", map[string]interface{}{
+	_, err = callS3Helper("upsert_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": newName,
 		"server_data": updatedData,
@@ -365,7 +467,7 @@ func deleteServer(c *gin.Context) {
 	serverName := c.Param("server_name")
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 
-	existing, err := callPythonS3("get_server", map[string]interface{}{
+	existing, err := callS3Helper("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})
@@ -377,7 +479,7 @@ func deleteServer(c *gin.Context) {
 		return
 	}
 
-	_, err = callPythonS3("delete_server", map[string]interface{}{
+	_, err = callS3Helper("delete_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})

@@ -166,14 +166,23 @@ def push(
 
             server_data = {
                 "name": name,
-                "repository": {"type": "git", "url": repo_url},
+                "version": config.get("version"),
                 "description": config.get("description", ""),
-                "entrypoint": config.get("entrypoint", "main.py"),
+                "author": config.get("author"),
                 "lang": config.get("lang", "python"),
-                "tools": tool_info.get("tool_names", []),
-                "tool_count": tool_info.get("tool_count", 0),
+                "license": config.get("license"),
+                "entrypoint": config.get("entrypoint", "main.py"),
+                "repository": {"type": "git", "url": repo_url},
+                "tools": {
+                    "names": tool_info.get("tool_names", []),
+                    "count": tool_info.get("tool_count", 0),
+                },
+                "pricing": config.get("pricing"),
                 "security_report": security_report,
             }
+
+            if config.get("homepage"):
+                server_data["homepage"] = config.get("homepage")
 
             meta = config.get("meta", {})
             if meta:

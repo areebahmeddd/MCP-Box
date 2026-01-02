@@ -9,6 +9,11 @@ from superbox.shared import s3
 from superbox.shared.config import Config, load_env
 
 
+def get_path() -> str:
+    """Get the Python executable path (venv if active, otherwise sys.executable)"""
+    return sys.executable
+
+
 @click.command()
 @click.option("--name", required=True, help="MCP server name to pull")
 @click.option(
@@ -75,9 +80,12 @@ def pull(name: str, client: str) -> None:
                 sys.exit(0)
 
         ws_url_with_params = f"{ws_url}?name={name}"
+
+        python_exe = get_path()
+
         vscode_config[config_section][name] = {
             "type": "stdio",
-            "command": "python",
+            "command": python_exe,
             "args": ["-m", "superbox.aws.proxy", "--url", ws_url_with_params],
         }
 

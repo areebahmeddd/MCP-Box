@@ -17,10 +17,11 @@ S3_BUCKET = "superbox-mcp-registry"
 
 _mcp_process = None
 _repo_dir = None
+_connection_params = {}
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Handle WebSocket events: $connect, $disconnect, $default."""
+    """Handle WebSocket events."""
     route_key = event.get("requestContext", {}).get("routeKey")
 
     if route_key == "$connect":
@@ -34,17 +35,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 
 def handle_connect(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle WebSocket connection event."""
-    global _mcp_process, _repo_dir
+    """Handle WebSocket connection and store query parameters."""
+    global _connection_params
 
     try:
+        connection_id = event.get("requestContext", {}).get("connectionId", "")
         query_params = event.get("queryStringParameters") or {}
         mcp_name = query_params.get("name", "")
 
         if not mcp_name:
             return {"statusCode": 400, "body": "Missing 'name' parameter"}
 
-        print(f"Connect: {mcp_name}")
+        _connection_params[connection_id] = query_params
+
+        print(f"Connect: {mcp_name} (connectionId: {connection_id})")
 
         return {"statusCode": 200}
 
@@ -56,8 +60,6 @@ def handle_connect(event: Dict[str, Any]) -> Dict[str, Any]:
 def handle_disconnect(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle WebSocket disconnection and cleanup resources."""
     global _mcp_process, _repo_dir
-
-    print("Disconnect")
 
     if _mcp_process:
         _mcp_process.kill()
@@ -76,18 +78,31 @@ def handle_message(event: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         body = event.get("body", "")
-        print(f"Message: {body[:100]}")
+
+        mcp_name = None
+        try:
+            message_data = json.loads(body)
+            if "_mcp_name" in message_data:
+                mcp_name = message_data.pop("_mcp_name")
+
+            if "method" in message_data and "params" not in message_data and "id" in message_data:
+                message_data["params"] = {}
+
+            body = json.dumps(message_data)
+        except (json.JSONDecodeError, KeyError):
+            pass
 
         if not _mcp_process or _mcp_process.poll() is not None:
             print("Setting up MCP server...")
 
-            query_params = (
-                event["requestContext"].get("authorizer", {}).get("queryStringParameters", {})
-            )
-            if not query_params:
-                query_params = event.get("queryStringParameters", {})
+            connection_id = event.get("requestContext", {}).get("connectionId", "")
+            query_params = _connection_params.get(connection_id, {})
 
-            mcp_name = query_params.get("name", "test-mcp")
+            if not mcp_name:
+                if not query_params:
+                    raise ValueError("MCP name not provided in message or connection params")
+                mcp_name = query_params.get("name")
+
             is_test_mode = query_params.get("test_mode", "").lower() == "true"
             repo_url = query_params.get("repo_url")
 
@@ -107,31 +122,43 @@ def handle_message(event: Dict[str, Any]) -> Dict[str, Any]:
             _mcp_process = start_server(_repo_dir, metadata["entrypoint"], metadata["lang"])
             print("MCP server ready")
 
+            init_message = {
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {},
+                    "clientInfo": {"name": "superbox", "version": "1.0.0"},
+                },
+            }
+            print("Auto-initializing MCP server")
+            _mcp_process.stdin.write((json.dumps(init_message) + "\n").encode("utf-8"))
+            _mcp_process.stdin.flush()
+
+            init_response_line = _mcp_process.stdout.readline()
+            init_response = init_response_line.decode("utf-8").strip()
+            print(f"Init response: {init_response[:200]}")
+
+            notif_message = {"jsonrpc": "2.0", "method": "notifications/initialized"}
+            _mcp_process.stdin.write((json.dumps(notif_message) + "\n").encode("utf-8"))
+            _mcp_process.stdin.flush()
+            print("MCP server initialized")
+
         _mcp_process.stdin.write((body + "\n").encode("utf-8"))
         _mcp_process.stdin.flush()
 
         response_line = _mcp_process.stdout.readline()
         response = response_line.decode("utf-8").strip()
 
-        print(f"Response: {response[:100]}")
-
         connection_id = event["requestContext"]["connectionId"]
         domain = event["requestContext"]["domainName"]
         stage = event["requestContext"]["stage"]
 
         endpoint_url = f"https://{domain}/{stage}"
-        print(f"Sending to: {endpoint_url}, connectionId: {connection_id}")
 
         api_gateway = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
-
-        try:
-            api_gateway.post_to_connection(
-                ConnectionId=connection_id, Data=response.encode("utf-8")
-            )
-            print("Response sent successfully")
-        except Exception as post_error:
-            print(f"Error posting to connection: {post_error}")
-            raise
+        api_gateway.post_to_connection(ConnectionId=connection_id, Data=response.encode("utf-8"))
 
         return {"statusCode": 200}
 
@@ -247,8 +274,9 @@ def install_deps(repo_dir: str) -> None:
     if pip_target not in sys.path:
         sys.path.insert(0, pip_target)
 
+    print(f"Installing dependencies to {pip_target}")
     try:
-        subprocess.run(
+        result = subprocess.run(
             [
                 sys.executable,
                 "-m",
@@ -262,6 +290,14 @@ def install_deps(repo_dir: str) -> None:
             ],
             capture_output=True,
             timeout=180,
+            text=True,
         )
+
+        if result.returncode != 0:
+            print(f"Pip install failed (returncode={result.returncode})")
+            print(f"Pip stderr: {result.stderr}")
+        else:
+            print("Pip install successful")
+
     except Exception as e:
-        print(f"Pip warning: {e}")
+        print(f"Pip error: {e}")

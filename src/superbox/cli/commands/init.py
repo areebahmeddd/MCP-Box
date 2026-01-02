@@ -38,6 +38,8 @@ def init() -> None:
     if not repo_url:
         repo_url = click.prompt("Repository URL", default="")
 
+    homepage = click.prompt("Homepage URL (optional)", default="", show_default=False)
+
     add_pricing = click.confirm("\nAdd pricing information?", default=False)
 
     config = {
@@ -50,6 +52,9 @@ def init() -> None:
         "entrypoint": entrypoint,
         "repository": {"type": "git", "url": repo_url},
     }
+
+    if homepage:
+        config["homepage"] = homepage
 
     if add_pricing:
         currency = click.prompt("Currency", default="USD")

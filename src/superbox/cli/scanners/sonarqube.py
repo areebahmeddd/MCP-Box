@@ -1,4 +1,5 @@
 import re
+import sys
 import time
 from datetime import datetime
 
@@ -236,7 +237,7 @@ def run_analysis(repo_url, env_path=None):
 
     repo_name = f"{owner}_{repo}"
     project_key = generate_key(owner, repo, SONAR_ORGANIZATION)
-    print(f"[Sonar] Analyzing {owner}/{repo}")
+    print(f"[Sonar] Analyzing {owner}/{repo}", file=sys.stderr)
 
     project_created = create_project(
         project_key, f"{owner}/{repo}", SONAR_HOST, SONAR_TOKEN, SONAR_ORGANIZATION

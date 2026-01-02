@@ -9,6 +9,11 @@ from superbox.cli.utils import config_path
 from superbox.shared.config import Config, load_env
 
 
+def get_path() -> str:
+    """Get the Python executable path (venv if active, otherwise sys.executable)"""
+    return sys.executable
+
+
 def get_repo(repo_url: str) -> str:
     """Extract repository name from URL"""
     repo_url = repo_url.strip().rstrip("/")
@@ -96,13 +101,13 @@ def test(url: str, client: str, entrypoint: str, lang: str) -> None:
                 sys.exit(0)
 
         encoded_url = quote(url, safe="")
-        ws_url_with_params = (
-            f"{ws_url}?test_mode=true&repo_url={encoded_url}&entrypoint={entrypoint}&lang={lang}"
-        )
+        ws_url_with_params = f"{ws_url}?name={test_server_name}&test_mode=true&repo_url={encoded_url}&entrypoint={entrypoint}&lang={lang}"
+
+        python_exe = get_path()
 
         client_config[config_section][test_server_name] = {
             "type": "stdio",
-            "command": "python",
+            "command": python_exe,
             "args": ["-m", "superbox.aws.proxy", "--url", ws_url_with_params],
         }
 

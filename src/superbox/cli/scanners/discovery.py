@@ -36,18 +36,23 @@ def extract_tools(content: str) -> List[str]:
     """
     tools = []
 
+    # Pattern 1: Decorators with explicit names
     tool_patterns = [
         r'@server\.call_tool\(["\']([^"\']+)["\']\)',
         r'@mcp\.tool\(["\']([^"\']+)["\']\)',
         r'@server\.tool\(["\']([^"\']+)["\']\)',
         r'Tool\(name=["\']([^"\']+)["\']\)',
         r'name=["\']([^"\']+)["\'].*type=["\']tool["\']',
-        r"def\s+(\w+).*@.*tool",
     ]
 
     for pattern in tool_patterns:
         matches = re.findall(pattern, content, re.MULTILINE)
         tools.extend(matches)
+
+    # Pattern 2: Decorator without params - extract function name
+    decorator_function_pattern = r"@(?:mcp|server)\.tool\(\s*\)\s*\ndef\s+(\w+)"
+    decorator_matches = re.findall(decorator_function_pattern, content, re.MULTILINE | re.DOTALL)
+    tools.extend(decorator_matches)
 
     if '"tools"' in content or "'tools'" in content:
         try:

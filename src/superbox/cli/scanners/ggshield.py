@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import subprocess
 from typing import Any, Dict
@@ -7,7 +8,7 @@ from superbox.shared.config import Config
 
 
 def run_scan(repo_path: str) -> Dict[str, Any]:
-    print("[GGShield] Scanning repository")
+    print("[GGShield] Scanning repository", file=sys.stderr)
     cfg = Config()
     env = dict(os.environ)
     env["GITGUARDIAN_API_KEY"] = cfg.GITGUARDIAN_API_KEY
