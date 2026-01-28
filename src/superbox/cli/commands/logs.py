@@ -38,7 +38,7 @@ def logs(name: str, follow: bool) -> None:
 
         click.echo(f"Server found: {server.get('description', 'No description')}")
 
-        log_group_name = f"/aws/lambda/superbox-executor-{name}"
+        log_group_name = "/aws/lambda/superbox-mcp-executor"
 
         logs_client = boto3.client(
             "logs",
@@ -60,10 +60,10 @@ def logs(name: str, follow: bool) -> None:
 
         if follow:
             click.echo("\nFollowing logs (Press Ctrl+C to stop)...\n")
-            _follow_logs(logs_client, log_group_name)
+            _follow_logs(logs_client, log_group_name, name)
         else:
             click.echo("\nFetching recent logs...\n")
-            _fetch_logs(logs_client, log_group_name)
+            _fetch_logs(logs_client, log_group_name, name)
 
     except KeyboardInterrupt:
         click.echo("\n\nStopped following logs")
@@ -73,27 +73,36 @@ def logs(name: str, follow: bool) -> None:
         sys.exit(1)
 
 
-def _fetch_logs(logs_client, log_group_name: str) -> None:
+def _fetch_logs(logs_client, log_group_name: str, server_name: str = None) -> None:
     start_time = int((datetime.now() - timedelta(hours=1)).timestamp() * 1000)
     end_time = int(datetime.now().timestamp() * 1000)
 
     try:
+        filter_pattern = f'"{server_name}"' if server_name else ""
+        
         response = logs_client.filter_log_events(
             logGroupName=log_group_name,
             startTime=start_time,
             endTime=end_time,
             limit=100,
             interleaved=True,
+            filterPattern=filter_pattern,
         )
 
         events = response.get("events", [])
 
         if not events:
-            click.echo("No log entries found in the past hour")
+            if server_name:
+                click.echo(f"No log entries found for '{server_name}' in the past hour")
+            else:
+                click.echo("No log entries found in the past hour")
             return
 
         click.echo("=" * 80)
-        click.echo(f"Logs for MCP server (showing {len(events)} entries)")
+        if server_name:
+            click.echo(f"Logs for MCP server '{server_name}' (showing {len(events)} entries)")
+        else:
+            click.echo(f"Logs for MCP server (showing {len(events)} entries)")
         click.echo("=" * 80 + "\n")
 
         for event in events:
@@ -116,23 +125,29 @@ def _fetch_logs(logs_client, log_group_name: str) -> None:
         sys.exit(1)
 
 
-def _follow_logs(logs_client, log_group_name: str) -> None:
+def _follow_logs(logs_client, log_group_name: str, server_name: str = None) -> None:
     import time
 
     last_timestamp = int((datetime.now() - timedelta(minutes=5)).timestamp() * 1000)
     seen_event_ids = set()
 
     click.echo("=" * 80)
-    click.echo("Following logs for MCP server")
+    if server_name:
+        click.echo(f"Following logs for MCP server '{server_name}'")
+    else:
+        click.echo("Following logs for MCP server")
     click.echo("=" * 80 + "\n")
 
     try:
         while True:
             try:
+                filter_pattern = f'"{server_name}"' if server_name else ""
+                
                 response = logs_client.filter_log_events(
                     logGroupName=log_group_name,
                     startTime=last_timestamp,
                     interleaved=True,
+                    filterPattern=filter_pattern,
                 )
                 events = response.get("events", [])
 
