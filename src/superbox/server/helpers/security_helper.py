@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from superbox.cli.scanners import bandit, ggshield, sonarqube
+from superbox.cli.scanners import sonarqube, snyk, ggshield, bandit
 from superbox.cli.scanners import discovery as tool_discovery
 from superbox.cli.utils import build_report
 
@@ -33,6 +33,11 @@ def scan_repository(repo_url: str, server_name: str) -> dict:
             repo_name = f"{owner}_{repo}" if owner and repo else server_name
 
             try:
+                snyk_result = snyk.run_scan(repo_path)
+            except Exception:
+                snyk_result = {"success": True, "total_vulnerabilities": 0, "vulnerabilities": []}
+
+            try:
                 ggshield_result = ggshield.run_scan(repo_path)
             except Exception:
                 ggshield_result = {"success": True, "total_secrets": 0, "secrets": []}
@@ -43,7 +48,7 @@ def scan_repository(repo_url: str, server_name: str) -> dict:
                 bandit_result = {"success": True, "total_issues": 0, "issues": []}
 
             security_report = build_report(
-                repo_name, repo_url, sonar_data, ggshield_result, bandit_result
+                repo_name, repo_url, sonar_data, snyk_result, ggshield_result, bandit_result
             )
 
             return {

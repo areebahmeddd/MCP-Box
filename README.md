@@ -38,7 +38,7 @@ Why this project:
 - **CloudWatch Logs**: `superbox logs --name <server>` fetches execution logs from AWS with real-time follow support.
 - **Tool Discovery**: Regex‑based discovery across Python code and optional Node `package.json` definitions.
 
-> **Note:** The Lambda executor currently supports Python + npm MCP servers.
+> **Note:** The Lambda executor currently supports Python MCP servers.
 
 ## 📚 Documentation
 

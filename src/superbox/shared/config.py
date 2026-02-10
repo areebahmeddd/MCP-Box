@@ -32,6 +32,7 @@ class Config:
         # Scanners Configurations
         self.SONAR_TOKEN = get_env("SONAR_TOKEN")
         self.SONAR_ORGANIZATION = get_env("SONAR_ORGANIZATION")
+        self.SNYK_API_TOKEN = get_env("SNYK_API_TOKEN")
         self.GITGUARDIAN_API_KEY = get_env("GITGUARDIAN_API_KEY")
 
         # Razorpay Configurations
@@ -68,6 +69,7 @@ class Config:
             "FIREBASE_PROJECT_ID": self.FIREBASE_PROJECT_ID,
             "SONAR_TOKEN": self.SONAR_TOKEN,
             "SONAR_ORGANIZATION": self.SONAR_ORGANIZATION,
+            "SNYK_API_TOKEN": self.SNYK_API_TOKEN,
             "GITGUARDIAN_API_KEY": self.GITGUARDIAN_API_KEY,
         }
         missing = [k for k, v in required.items() if not v]
