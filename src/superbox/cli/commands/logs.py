@@ -79,7 +79,7 @@ def _fetch_logs(logs_client, log_group_name: str, server_name: str = None) -> No
 
     try:
         filter_pattern = f'"{server_name}"' if server_name else ""
-        
+
         response = logs_client.filter_log_events(
             logGroupName=log_group_name,
             startTime=start_time,
@@ -142,7 +142,7 @@ def _follow_logs(logs_client, log_group_name: str, server_name: str = None) -> N
         while True:
             try:
                 filter_pattern = f'"{server_name}"' if server_name else ""
-                
+
                 response = logs_client.filter_log_events(
                     logGroupName=log_group_name,
                     startTime=last_timestamp,

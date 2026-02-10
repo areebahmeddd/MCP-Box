@@ -11,6 +11,7 @@ def build_report(
     repo_name: str,
     repo_url: str,
     sonarqube_data: Dict[str, Any],
+    snyk_result: Dict[str, Any],
     ggshield_result: Dict[str, Any],
     bandit_result: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -20,11 +21,12 @@ def build_report(
             "repository": repo_name,
             "repo_url": repo_url,
             "scan_date": datetime.now().isoformat(),
-            "scanners_used": ["SonarQube", "GitGuardian ggshield", "Bandit"],
+            "scanners_used": ["SonarQube", "Snyk", "GitGuardian ggshield", "Bandit"],
         },
         "summary": {
             "total_issues_all_scanners": (
                 sonarqube_data.get("issue_counts", {}).get("total", 0)
+                + snyk_result.get("total_vulnerabilities", 0)
                 + ggshield_result.get("total_secrets", 0)
                 + bandit_result.get("total_issues", 0)
             ),
@@ -32,6 +34,7 @@ def build_report(
             "sonarcloud_url": sonarqube_data.get("metadata", {}).get("sonarcloud_url", ""),
             "scan_passed": (
                 sonarqube_data.get("issue_counts", {}).get("total", 0) == 0
+                and snyk_result.get("total_vulnerabilities", 0) == 0
                 and ggshield_result.get("total_secrets", 0) == 0
                 and bandit_result.get("total_issues", 0) == 0
             ),
@@ -54,6 +57,13 @@ def build_report(
             "duplications": sonarqube_data.get("metrics", {}).get("duplicated_lines_density", 0),
             "lines_of_code": sonarqube_data.get("metrics", {}).get("ncloc", 0),
         },
+        "snyk": {
+            "scan_passed": snyk_result.get("success", False),
+            "total_vulnerabilities": snyk_result.get("total_vulnerabilities", 0),
+            "severity_counts": snyk_result.get("severity_counts", {}),
+            "vulnerabilities": snyk_result.get("vulnerabilities", []),
+            "error": snyk_result.get("error"),
+        },
         "gitguardian": {
             "scan_passed": ggshield_result.get("success", False),
             "total_secrets": ggshield_result.get("total_secrets", 0),
@@ -75,6 +85,8 @@ def build_report(
     secrets = ggshield_result.get("total_secrets", 0)
     bandit_issues = bandit_result.get("total_issues", 0)
     high_severity = bandit_result.get("severity_counts", {}).get("high", 0)
+    snyk_critical = snyk_result.get("severity_counts", {}).get("critical", 0)
+    snyk_high = snyk_result.get("severity_counts", {}).get("high", 0)
     coverage = sonarqube_data.get("metrics", {}).get("coverage", 0)
 
     try:
@@ -82,13 +94,17 @@ def build_report(
     except (ValueError, TypeError):
         coverage = 0
 
-    if sonar_issues > 5 or secrets > 0 or high_severity > 0:
+    if sonar_issues > 5 or secrets > 0 or high_severity > 0 or snyk_critical > 0:
         unified_report["recommendations"].append(
             "Critical security issues found - immediate action required"
         )
     if secrets > 0:
         unified_report["recommendations"].append(
             "Secrets detected - rotate credentials immediately"
+        )
+    if snyk_critical > 0 or snyk_high > 0:
+        unified_report["recommendations"].append(
+            "Dependency vulnerabilities found - update packages immediately"
         )
     if bandit_issues > 0:
         unified_report["recommendations"].append("Security vulnerabilities found - review and fix")
@@ -113,6 +129,7 @@ def show_summary(security_report: Dict[str, Any]) -> None:
     sonar_total = security_report["sonarqube"].get("total_issues", 0)
     secrets = security_report["gitguardian"].get("total_secrets", 0)
     bandit_total = security_report["bandit"].get("total_issues", 0)
+    snyk_total = security_report["snyk"].get("total_vulnerabilities", 0)
     parts = []
     if sonar_total:
         parts.append(f"sonar={sonar_total}")
@@ -120,6 +137,8 @@ def show_summary(security_report: Dict[str, Any]) -> None:
         parts.append(f"secrets={secrets}")
     if bandit_total:
         parts.append(f"bandit={bandit_total}")
+    if snyk_total:
+        parts.append(f"snyk={snyk_total}")
     if parts:
         click.echo("Details: " + ", ".join(parts))
 

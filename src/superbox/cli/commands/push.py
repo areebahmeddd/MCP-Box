@@ -8,7 +8,7 @@ from typing import Optional
 import click
 import requests
 
-from superbox.cli.scanners import bandit, ggshield, sonarqube
+from superbox.cli.scanners import sonarqube, snyk, ggshield, bandit
 from superbox.cli.scanners import discovery as tool_discovery
 from superbox.cli.utils import build_report, show_summary
 from superbox.shared import s3
@@ -137,6 +137,17 @@ def push(
 
                     click.echo("Running additional scanners...")
 
+                    click.echo("\nRunning Snyk Dependency Scan...")
+                    snyk_result = snyk.run_scan(repo_clone_path)
+                    if snyk_result.get("success"):
+                        click.echo("   Snyk: No vulnerabilities detected")
+                    elif "error" in snyk_result:
+                        click.echo(f"   Snyk: {snyk_result['error']}")
+                    else:
+                        click.echo(
+                            f"   Snyk: {snyk_result.get('total_vulnerabilities', 0)} vulnerability(ies) detected"
+                        )
+
                     click.echo("\nRunning GitGuardian Secret Scan...")
                     ggshield_result = ggshield.run_scan(repo_clone_path)
                     if ggshield_result.get("success"):
@@ -151,9 +162,14 @@ def push(
                     click.echo("\nRunning Bandit Python Security Scan...")
                     bandit_result = bandit.run_scan(repo_clone_path)
 
-                    click.echo("Generating security report...")
+                    click.echo("\nGenerating security report...")
                     security_report = build_report(
-                        repo_name, repo_url, result["report_data"], ggshield_result, bandit_result
+                        repo_name,
+                        repo_url,
+                        result["report_data"],
+                        snyk_result,
+                        ggshield_result,
+                        bandit_result,
                     )
 
                     show_summary(security_report)
