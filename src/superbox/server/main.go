@@ -29,9 +29,9 @@ func main() {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
-	config.AllowCredentials = true
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"*"}
+	config.AllowCredentials = true
 	router.Use(cors.New(config))
 
 	api := router.Group("/api/v1")

@@ -9,7 +9,7 @@
 ## 1) Prerequisites
 
 - Python 3.11+ (for CLI)
-- Go 1.21+ (for server)
+- Go 1.26+ (for server)
 - Git
 
 ## 2) Create and activate a virtual environment
@@ -29,11 +29,21 @@ source .venv/bin/activate
 
 ## 3) Install SuperBox CLI
 
+**From PyPI (end users):**
+
 ```powershell
-python -m pip install -e .[cli]
+pip install superbox
 ```
 
-Optional (dev tools):
+This installs everything needed to run all CLI commands including `push` (security scanning via Bandit and ggshield).
+
+**From source (contributors):**
+
+```powershell
+python -m pip install -e .
+```
+
+With dev tools (pytest, ruff, pre-commit):
 
 ```powershell
 python -m pip install -e .[dev]
@@ -93,7 +103,57 @@ Then open:
 
 If `.env` is incomplete or missing, server health will be degraded and routes depending on missing configuration will fail.
 
-## 6) Use the CLI
+## 6) Run the server via Docker
+
+Pull the pre-built image:
+
+```bash
+docker pull areebahmeddd/superbox-be:latest
+```
+
+Run with your `.env` file:
+
+```bash
+docker run -p 8000:8000 --env-file .env areebahmeddd/superbox-be:latest
+```
+
+Or pass environment variables inline:
+
+```bash
+docker run -p 8000:8000 \
+  -e AWS_REGION=ap-south-1 \
+  -e AWS_ACCESS_KEY_ID=... \
+  -e AWS_SECRET_ACCESS_KEY=... \
+  -e S3_BUCKET_NAME=... \
+  -e WEBSOCKET_URL=... \
+  areebahmeddd/superbox-be:latest
+```
+
+Available tags:
+
+- `latest` — Python 3.11-slim runner (includes CLI helper scripts)
+
+### Via Docker Compose (recommended for local development)
+
+From the `backend/` directory:
+
+```bash
+# Build and start
+docker compose up -d
+
+# Tail logs
+docker compose logs -f
+
+# Hot reload (syncs Python helpers instantly; rebuilds on Go source changes)
+docker compose watch
+
+# Stop
+docker compose down
+```
+
+The server will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000). Environment variables are loaded from `.env` automatically.
+
+## 7) Use the CLI
 
 > **📖 For complete CLI usage, examples, and command references:** [https://superbox.1mindlabs.org/docs/cli](https://acm-aa28ebf6.mintlify.app/cli)
 
@@ -105,14 +165,79 @@ superbox --help
 
 All CLI commands, options, and detailed examples are available in our [CLI documentation](https://acm-aa28ebf6.mintlify.app/cli/introduction).
 
-## 7) Troubleshooting
+## 8) Troubleshooting
 
 - Missing env: ensure `.env` is present with the variables above.
 - AWS permissions: verify bucket exists and IAM creds allow GetObject/PutObject for the bucket.
 - Sonar scanner: requires `sonar-scanner` on PATH; set `SONAR_TOKEN` and `SONAR_ORGANIZATION`.
-- ggshield/Bandit CLIs: install these tools if you plan to run those scans (`ggshield`, `bandit` in PATH).
+- ggshield/Bandit: bundled with `pip install superbox` — no separate install needed.
 
-## 8) Uninstall / Clean up
+## 9) Run the test suite
+
+### Run Python cli tests
+
+```powershell
+pytest -q --tb=short
+```
+
+For verbose output:
+
+```powershell
+pytest -v
+```
+
+With coverage report:
+
+```powershell
+pytest -q --tb=short --cov=superbox --cov-report=term-missing
+```
+
+### Run Go server tests
+
+```powershell
+cd src\superbox\server
+go test ./handlers/... -v
+```
+
+With coverage:
+
+```powershell
+cd src\superbox\server
+go test ./handlers/... -cover
+```
+
+### Test layout
+
+```
+tests/                           (Python)
+├── conftest.py              # shared fixtures (mocked env, moto S3, sample data)
+├── unit/
+│   ├── test_shared_config.py    # get_env, load_env, Config validation
+│   ├── test_shared_models.py    # Pydantic model validation
+│   ├── test_shared_s3.py        # S3 CRUD via moto
+│   ├── test_cli_utils.py        # build_report, show_summary, config_path
+│   └── test_cli_discovery.py    # extract_tools, scan_repo, scan_package, discover_tools
+├── integration/
+│   ├── test_cli_init.py         # superbox init
+│   ├── test_cli_auth.py         # superbox auth (login/logout/status/refresh)
+│   ├── test_cli_pull.py         # superbox pull
+│   ├── test_cli_push.py         # superbox push (all scanners mocked, moto S3)
+│   ├── test_cli_run.py          # superbox run (deprecated command)
+│   └── test_cli_search.py       # superbox search
+└── aws/
+    ├── test_lambda_handlers.py  # Lambda connect/disconnect/message/fetch_meta/clone_repo
+    └── test_proxy.py            # WebSocket ↔ stdio proxy (pytest-asyncio)
+
+src/superbox/server/handlers/   (Go)
+├── health_test.go               # /health endpoint, degraded/healthy status
+├── playground_test.go           # /playground/chat endpoint
+├── payment_test.go              # HMAC signature verify, createOrder success/error
+└── servers_test.go              # list/get/create/delete server CRUD
+```
+
+No real AWS credentials, Firebase keys, or scanner tokens are required — all external calls are mocked via `moto`, `unittest.mock`, and `pytest` fixtures.
+
+## 10) Uninstall / Clean up
 
 ```powershell
 deactivate   # leave venv

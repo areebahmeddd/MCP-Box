@@ -1,7 +1,7 @@
 import sys
+import json
 import asyncio
 import argparse
-import json
 from urllib.parse import urlparse, parse_qs
 import websockets
 

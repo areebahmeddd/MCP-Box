@@ -15,13 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var razorpayKeyID string
-var razorpayKeySecret string
-
-func init() {
-	razorpayKeyID = os.Getenv("RAZORPAY_KEY_ID")
-	razorpayKeySecret = os.Getenv("RAZORPAY_KEY_SECRET")
-}
+// razorpayCreateOrderFn and razorpayGetPaymentFn are package-level vars so tests
+// can override them without hitting the real Razorpay API.
+var razorpayCreateOrderFn = razorpayCreateOrder
+var razorpayGetPaymentFn = razorpayGetPayment
 
 func RegisterPayment(api *gin.RouterGroup) {
 	payment := api.Group("/payment")
@@ -54,7 +51,7 @@ func createOrder(c *gin.Context) {
 		},
 	}
 
-	order, err := razorpayCreateOrder(orderData)
+	order, err := razorpayCreateOrderFn(orderData)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.OrderResponse{
 			Status: "error",
@@ -70,7 +67,7 @@ func createOrder(c *gin.Context) {
 			"amount":   order["amount"],
 			"currency": order["currency"],
 		},
-		KeyID: razorpayKeyID,
+		KeyID: os.Getenv("RAZORPAY_KEY_ID"),
 	})
 }
 
@@ -85,7 +82,7 @@ func verifyPayment(c *gin.Context) {
 	}
 
 	message := fmt.Sprintf("%s|%s", req.RazorpayOrderID, req.RazorpayPaymentID)
-	mac := hmac.New(sha256.New, []byte(razorpayKeySecret))
+	mac := hmac.New(sha256.New, []byte(os.Getenv("RAZORPAY_KEY_SECRET")))
 	mac.Write([]byte(message))
 	generatedSignature := hex.EncodeToString(mac.Sum(nil))
 
@@ -110,7 +107,7 @@ func verifyPayment(c *gin.Context) {
 func getPaymentStatus(c *gin.Context) {
 	paymentID := c.Param("payment_id")
 
-	payment, err := razorpayGetPayment(paymentID)
+	payment, err := razorpayGetPaymentFn(paymentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.PaymentResponse{
 			Status: "error",
@@ -146,7 +143,7 @@ func razorpayCreateOrder(orderData map[string]interface{}) (map[string]interface
 		return nil, err
 	}
 
-	req.SetBasicAuth(razorpayKeyID, razorpayKeySecret)
+	req.SetBasicAuth(os.Getenv("RAZORPAY_KEY_ID"), os.Getenv("RAZORPAY_KEY_SECRET"))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -178,7 +175,7 @@ func razorpayGetPayment(paymentID string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	req.SetBasicAuth(razorpayKeyID, razorpayKeySecret)
+	req.SetBasicAuth(os.Getenv("RAZORPAY_KEY_ID"), os.Getenv("RAZORPAY_KEY_SECRET"))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

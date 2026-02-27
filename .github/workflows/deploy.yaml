@@ -1,0 +1,100 @@
+name: Deploy Backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: GHCR image tag to promote (commit SHA or 'latest')
+        required: false
+        default: latest
+        type: string
+      environment:
+        description: Deployment environment
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  promote:
+    name: Promote Docker Image from GHCR to Amazon ECR
+    runs-on: ubuntu-latest
+    outputs:
+      ecr_registry: ${{ steps.login-ecr.outputs.registry }}
+
+    steps:
+      - name: Authenticate with GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Authenticate with Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Pull Docker Image from GHCR
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/superbox-server:${{ inputs.image_tag }}
+
+      - name: Retag and Push Docker Image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: superbox-server
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/superbox-server:${{ inputs.image_tag }} \
+            $ECR_REGISTRY/$ECR_REPOSITORY:${{ inputs.image_tag }}
+          docker tag ghcr.io/${{ github.repository_owner }}/superbox-server:${{ inputs.image_tag }} \
+            $ECR_REGISTRY/$ECR_REPOSITORY:production-latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ inputs.image_tag }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:production-latest
+
+  deploy:
+    name: Deploy Backend to AWS
+    runs-on: ubuntu-latest
+    needs: promote
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Deploy Docker Image to AWS App Runner
+        env:
+          ECR_REGISTRY: ${{ needs.promote.outputs.ecr_registry }}
+        run: |
+          aws apprunner update-service \
+            --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} \
+            --source-configuration "ImageRepository={ImageIdentifier=$ECR_REGISTRY/superbox-server:production-latest,ImageRepositoryType=ECR}"
+
+  summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Display Deployment Details
+        run: |
+          echo "Backend server deployed successfully!"
+          echo "Environment : ${{ inputs.environment }}"
+          echo "Image Tag   : ${{ inputs.image_tag }}"
+          echo "Source      : ghcr.io/${{ github.repository_owner }}/superbox-server:${{ inputs.image_tag }}"
+          echo "Triggered by: ${{ github.actor }}"

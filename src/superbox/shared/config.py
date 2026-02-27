@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -76,25 +76,6 @@ class Config:
         if missing:
             raise ValueError(f"Missing required config: {', '.join(missing)}")
         return True
-
-
-class ServerConfig:
-    """Server settings and middleware configuration"""
-
-    def app_params(self) -> Dict[str, Any]:
-        return {
-            "title": "SuperBox Server",
-            "description": "API server for MCP server registry and management",
-            "version": "1.0.0",
-        }
-
-    def cors_params(self) -> Dict[str, Any]:
-        return {
-            "allow_origins": ["*"],
-            "allow_credentials": True,
-            "allow_methods": ["*"],
-            "allow_headers": ["*"],
-        }
 
 
 def load_env(env_path: Optional[os.PathLike | str] = None) -> None:

@@ -124,8 +124,6 @@ def push(
                 click.echo("Analysis failed")
                 sys.exit(1)
 
-            _ = result["report_data"]
-
             temp_dir = tempfile.mkdtemp(prefix="superbox_scan_")
             try:
                 repo_clone_path = tool_discovery.clone_repo(repo_url, temp_dir)

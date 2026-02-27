@@ -60,13 +60,13 @@ def test(url: str, client: str, entrypoint: str, lang: str) -> None:
         repo_name = get_repo(url)
 
         click.echo("\n" + "=" * 70)
-        click.echo("⚠️  TEST MODE - No Security Checks")
+        click.echo("TEST MODE - No Security Checks")
         click.echo("=" * 70)
         click.echo("\nThis server is being tested directly and has NOT gone through:")
         click.echo("  • Security scanning (SonarQube, Bandit, GitGuardian)")
         click.echo("  • Quality checks")
         click.echo("  • Registry validation")
-        click.echo("\n⚠️  This server will NOT be available on the platform.")
+        click.echo("\nNOTE: This server will NOT be available on the platform.")
         click.echo("=" * 70 + "\n")
 
         target = client.lower()

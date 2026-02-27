@@ -57,7 +57,7 @@ def init() -> None:
         config["homepage"] = homepage
 
     if add_pricing:
-        currency = click.prompt("Currency", default="USD")
+        currency = click.prompt("Currency", default="INR")
         amount = click.prompt("Amount", type=float, default=0.0)
         config["pricing"] = {"currency": currency, "amount": amount}
 

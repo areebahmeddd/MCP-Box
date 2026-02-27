@@ -1,0 +1,75 @@
+name: Publish Python Package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    name: Build Python Package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Extract Package Version
+        id: version
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install Build Tools
+        run: pip install build
+
+      - name: Build Package Distribution
+        run: python -m build
+
+      - name: Upload Distribution Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: build
+    environment: pypi
+
+    steps:
+      - name: Download Distribution Artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish Package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+  summary:
+    name: Publish Summary
+    runs-on: ubuntu-latest
+    needs: [build, publish]
+
+    steps:
+      - name: Display Publish Details
+        run: |
+          echo "CLI package published successfully!"
+          echo "Package     : superbox"
+          echo "Version     : ${{ needs.build.outputs.version }}"
+          echo "Registry    : PyPI (https://pypi.org/project/superbox)"
+          echo "Triggered by: ${{ github.actor }}"

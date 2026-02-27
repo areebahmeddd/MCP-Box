@@ -1,0 +1,52 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: superbox-server
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - superbox-logs:/app/logs
+    networks:
+      - superbox-net
+    develop:
+      watch:
+        # Rebuild image when Go source changes (binary must be recompiled)
+        - action: rebuild
+          path: ./src/superbox/server
+          ignore:
+            - "**/*_test.go"
+        # Sync Python helpers directly into the container (interpreted, no rebuild needed)
+        - action: sync
+          path: ./src/superbox/server/helpers
+          target: /app/helpers
+        # Sync shared Python code directly into the container
+        - action: sync
+          path: ./src/superbox/shared
+          target: /app/src/superbox/shared
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+networks:
+  superbox-net:
+    driver: bridge
+
+volumes:
+  superbox-logs:
+    driver: local

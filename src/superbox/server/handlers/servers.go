@@ -118,11 +118,16 @@ func callSecurityHelper(repoURL, serverName string) (map[string]interface{}, err
 	return result, nil
 }
 
+// s3HelperFn and securityHelperFn are package-level vars so tests can override
+// them without spawning a real Python subprocess.
+var s3HelperFn = callS3Helper
+var securityHelperFn = callSecurityHelper
+
 func getServer(c *gin.Context) {
 	serverName := c.Param("server_name")
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 
-	result, err := callS3Helper("get_server", map[string]interface{}{
+	result, err := s3HelperFn("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})
@@ -175,7 +180,7 @@ func listServers(c *gin.Context) {
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 	authorFilter := c.Query("author")
 
-	result, err := callS3Helper("list_servers", map[string]interface{}{
+	result, err := s3HelperFn("list_servers", map[string]interface{}{
 		"bucket_name": bucketName,
 	})
 	if err != nil {
@@ -248,7 +253,7 @@ func createServer(c *gin.Context) {
 
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 
-	existing, err := callS3Helper("get_server", map[string]interface{}{
+	existing, err := s3HelperFn("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": req.Name,
 	})
@@ -260,7 +265,7 @@ func createServer(c *gin.Context) {
 		return
 	}
 
-	securityResult, err := callSecurityHelper(req.Repository.URL, req.Name)
+	securityResult, err := securityHelperFn(req.Repository.URL, req.Name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
@@ -308,7 +313,7 @@ func createServer(c *gin.Context) {
 		}
 	}
 
-	_, err = callS3Helper("upsert_server", map[string]interface{}{
+	_, err = s3HelperFn("upsert_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": req.Name,
 		"server_data": newServer,
@@ -341,7 +346,7 @@ func updateServer(c *gin.Context) {
 		return
 	}
 
-	existingResult, err := callS3Helper("get_server", map[string]interface{}{
+	existingResult, err := s3HelperFn("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})
@@ -361,7 +366,7 @@ func updateServer(c *gin.Context) {
 
 	newName := serverName
 	if req.Name != nil && *req.Name != serverName {
-		checkResult, _ := callS3Helper("get_server", map[string]interface{}{
+		checkResult, _ := s3HelperFn("get_server", map[string]interface{}{
 			"bucket_name": bucketName,
 			"server_name": *req.Name,
 		})
@@ -437,13 +442,13 @@ func updateServer(c *gin.Context) {
 	}
 
 	if newName != serverName {
-		callS3Helper("delete_server", map[string]interface{}{
+		s3HelperFn("delete_server", map[string]interface{}{
 			"bucket_name": bucketName,
 			"server_name": serverName,
 		})
 	}
 
-	_, err = callS3Helper("upsert_server", map[string]interface{}{
+	_, err = s3HelperFn("upsert_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": newName,
 		"server_data": updatedData,
@@ -467,7 +472,7 @@ func deleteServer(c *gin.Context) {
 	serverName := c.Param("server_name")
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 
-	existing, err := callS3Helper("get_server", map[string]interface{}{
+	existing, err := s3HelperFn("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})
@@ -479,7 +484,7 @@ func deleteServer(c *gin.Context) {
 		return
 	}
 
-	_, err = callS3Helper("delete_server", map[string]interface{}{
+	_, err = s3HelperFn("delete_server", map[string]interface{}{
 		"bucket_name": bucketName,
 		"server_name": serverName,
 	})

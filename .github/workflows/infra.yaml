@@ -1,22 +1,52 @@
-name: Deploy AWS Infrastructure
+name: Deploy Infrastructure
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Code Quality and Testing
+    types:
+      - completed
     branches:
       - prod
-    paths:
-      - src/superbox/aws/lambda.py
-      - src/superbox/aws/proxy.py
-      - .github/workflows/infra.yaml
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  check-changes:
+    name: Check Relevant File Changes
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      should-run: ${{ steps.filter.outputs.changed }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Detect Relevant File Changes
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            FILES=$(git diff --name-only HEAD~1 HEAD)
+            echo "$FILES"
+            if echo "$FILES" | grep -qE '^src/superbox/aws/(lambda|proxy)\.py|\.github/workflows/infra\.yaml'; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
   infra-deploy:
     name: Trigger Infrastructure Deployment
     runs-on: ubuntu-latest
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.should-run == 'true' }}
 
     steps:
       - name: Trigger SuperBox-Infra Workflow
@@ -27,7 +57,7 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: 'arush3218',
               repo: 'SuperBox-Infra',
-              workflow_id: 'deploy.yml',
+              workflow_id: 'deploy.yaml',
               ref: 'main'
             });
 

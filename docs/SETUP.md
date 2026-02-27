@@ -4,13 +4,13 @@ Complete guide for deploying SuperBox AWS infrastructure using either manual AWS
 
 ## Architecture Overview
 
-| Component           | Purpose                     | Details                                   |
-| ------------------- | --------------------------- | ----------------------------------------- |
-| **S3 Bucket**       | MCP server registry storage | Stores server metadata and package files  |
-| **Lambda Function** | MCP executor                | Python 3.11 runtime, executes MCP servers |
-| **Function URL**    | Public HTTPS endpoint       | CORS enabled, no authentication           |
-| **IAM Role**        | Lambda permissions          | S3 access + CloudWatch logs               |
-| **CloudWatch Logs** | Execution logs              | 7-day retention                           |
+| Component           | Resource Name                       | Purpose                                   |
+| ------------------- | ----------------------------------- | ----------------------------------------- |
+| **S3 Bucket**       | `superbox-mcp-registry`             | Stores MCP server metadata as JSON files  |
+| **Lambda Function** | `superbox-mcp-executor`             | Runs MCP servers in isolated subprocesses |
+| **WebSocket API**   | `superbox-mcp-ws`                   | Persistent connections for MCP protocol   |
+| **IAM Role**        | `superbox-lambda-role`              | S3, CloudWatch, and WebSocket permissions |
+| **CloudWatch Logs** | `/aws/lambda/superbox-mcp-executor` | Execution logs, 7-day retention           |
 
 ---
 
@@ -18,145 +18,106 @@ Complete guide for deploying SuperBox AWS infrastructure using either manual AWS
 
 ### Step 1: Create S3 Bucket
 
-1. Open AWS Console and search **S3**
-2. Click **Create bucket**
-3. Configure:
-   - **Bucket name:** `superbox-registry-prod` (must be globally unique)
+1. Open AWS Console → search **S3** → **Create bucket**
+2. Configure:
+   - **Bucket name:** `superbox-mcp-registry` (must be globally unique)
    - **Region:** Asia Pacific (Mumbai) `ap-south-1`
-   - **Block Public Access:** Keep all 4 checkboxes CHECKED
-   - **Versioning:** Disable
+   - **Block Public Access:** keep all 4 checkboxes checked
    - **Encryption:** SSE-S3 (default)
-4. Click **Create bucket**
+3. Click **Create bucket**
 
 ### Step 2: Create IAM Role
 
-1. Open AWS Console and search **IAM**
-2. Click **Roles** → **Create role**
-3. Configure:
-   - **Trusted entity:** AWS service
-   - **Use case:** Lambda
-4. Click **Next**
-5. Add permissions (search and check both):
-   - `AWSLambdaBasicExecutionRole` (CloudWatch logs)
-   - `AmazonS3FullAccess` (S3 access)
-6. Click **Next**
-7. Configure:
+1. Open AWS Console → search **IAM** → **Roles** → **Create role**
+2. Configure:
+   - **Trusted entity:** AWS service → **Lambda**
+3. Attach permissions:
+   - `AWSLambdaBasicExecutionRole`
+   - `AmazonS3FullAccess`
+   - `AmazonAPIGatewayInvokeFullAccess`
+4. Configure:
    - **Role name:** `superbox-lambda-role`
-   - **Description:** Execution role for SuperBox Lambda
-8. Click **Create role**
+5. Click **Create role**
 
 ### Step 3: Create Lambda Function
 
-1. Open AWS Console and search **Lambda**
-2. Click **Create function**
-3. Configure:
+1. Open AWS Console → search **Lambda** → **Create function**
+2. Configure:
    - **Method:** Author from scratch
-   - **Function name:** `superbox-executor`
+   - **Function name:** `superbox-mcp-executor`
    - **Runtime:** Python 3.11
    - **Architecture:** x86_64
-4. Expand **Change default execution role**
-   - Select **Use an existing role**
-   - Choose `superbox-lambda-role`
-5. Click **Create function**
+3. Expand **Change default execution role** → **Use an existing role** → select `superbox-lambda-role`
+4. Click **Create function**
 
 ### Step 4: Upload Lambda Code
 
-**Prepare ZIP file locally:**
-
-1. Locate `lambda.py` in project root
-2. Right-click → **Send to** → **Compressed (zipped) folder**
-3. Rename to `lambda.zip`
-4. Ensure `lambda.py` is at root level (not in a folder)
-
-**Upload to Lambda:**
-
-1. In Lambda console, scroll to **Code source** section
-2. Click **Upload from** → **.zip file**
-3. Click **Upload** → select `lambda.zip` → **Save**
-4. Wait for success message
-5. Scroll to **Runtime settings** → Click **Edit**
-   - **Handler:** Change to `lambda.lambda_handler`
-6. Click **Save**
+1. Locate `infra/aws/lambda.py`, zip it as `lambda_payload.zip` (file must be at root of zip)
+2. In Lambda console → **Code source** → **Upload from** → **.zip file** → upload `lambda_payload.zip` → **Save**
+3. Scroll to **Runtime settings** → **Edit** → set **Handler** to `lambda.lambda_handler` → **Save**
 
 ### Step 5: Configure Environment Variables
 
-1. Click **Configuration** tab → **Environment variables**
-2. Click **Edit** → **Add environment variable**
-3. Add:
-   - **Key:** `AWS_REGION` | **Value:** `ap-south-1`
-   - **Key:** `S3_BUCKET_NAME` | **Value:** `superbox-registry-prod`
-4. Click **Save**
+1. **Configuration** tab → **Environment variables** → **Edit** → **Add environment variable**
+2. Add:
+   - `AWS_REGION` = `ap-south-1`
+   - `S3_BUCKET_NAME` = `superbox-mcp-registry`
+3. Click **Save**
 
-> **Important:** Do NOT create .env file in Lambda. Environment variables are managed through Configuration section.
+> Do **not** create a `.env` file in Lambda. All env vars are managed through the Configuration tab.
 
 ### Step 6: Configure Timeout and Memory
 
-1. Stay in **Configuration** tab → **General configuration**
-2. Click **Edit**
+1. **Configuration** tab → **General configuration** → **Edit**
+2. Set **Timeout** to `1 min 0 sec` and **Memory** to `1024 MB`
+3. Click **Save**
+
+### Step 7: Create WebSocket API
+
+1. Open AWS Console → search **API Gateway** → **Create API**
+2. Choose **WebSocket API** → **Build**
 3. Configure:
-   - **Timeout:** 0 min 30 sec
-   - **Memory:** 256 MB
-4. Click **Save**
+   - **API name:** `superbox-mcp-ws`
+   - **Route selection expression:** `$request.body.action`
+4. Click **Next**
 
-### Step 7: Add Function URL Invoke Permission
+### Step 8: Configure Routes
 
-1. Stay in **Configuration** tab → **Permissions**
-2. Scroll down to **Resource-based policy statements**
-3. Click **Add permissions**
-4. Configure:
-   - **Function URL:** Select this option
-   - **Auth type:** NONE
-   - **Statement ID:** `FunctionURLAllowPublicAccess`
-   - **Principal:** `*`
-   - **Action:** `lambda:InvokeFunctionUrl`
-5. Click **Save**
+Add three routes and set their integration to the `superbox-mcp-executor` Lambda for each:
 
-> This permission allows public access to your Function URL
+| Route key     | Integration type | Lambda function         |
+| ------------- | ---------------- | ----------------------- |
+| `$connect`    | Lambda           | `superbox-mcp-executor` |
+| `$disconnect` | Lambda           | `superbox-mcp-executor` |
+| `$default`    | Lambda           | `superbox-mcp-executor` |
 
-### Step 8: Create Function URL
+### Step 9: Deploy to Stage
 
-1. Stay in **Configuration** tab → **Function URL**
-2. Click **Create function URL**
-3. Configure:
-   - **Auth type:** NONE
-   - Check **Configure CORS**
-   - **Allow origin:** `*`
-   - **Allow methods:** Check ALL boxes
-   - **Allow headers:** `*`
-   - **Max age:** `86400`
-4. Click **Save**
-5. **Copy the Function URL** (save in notepad)
+1. Click **Deploy API**
+2. Create a new stage named `production`
+3. Click **Deploy**
+4. **Copy the WebSocket URL** — it will look like:
+   `wss://xxxxxxxxxx.execute-api.ap-south-1.amazonaws.com/production`
 
-### Step 9: Test Endpoints
+### Step 10: Grant Lambda Permission
 
-**Browser Testing (GET requests):**
+In the Lambda console → **Configuration** → **Permissions** → **Resource-based policy statements** → **Add permissions**:
 
-```text
-https://your-url.lambda-url.ap-south-1.on.aws/health
-https://your-url.lambda-url.ap-south-1.on.aws/list
-```
+- **AWS service:** API Gateway
+- **Statement ID:** `AllowWebSocketInvoke`
+- **Action:** `lambda:InvokeFunction`
+- **Source ARN:** `arn:aws:execute-api:ap-south-1:*:*/production/*/*`
 
-**PowerShell Testing:**
+Click **Save**.
 
-```powershell
-# Health check
-Invoke-RestMethod -Uri "https://your-url/health" -Method GET
+### Step 11: View Logs
 
-# Search (POST)
-Invoke-RestMethod -Uri "https://your-url/search" -Method POST -Body '{"query":"test"}' -ContentType "application/json"
-```
-
-### Step 10: View Logs
-
-1. Click **Monitor** tab → **View CloudWatch logs**
-2. Click most recent log stream
-3. View execution logs and errors
+1. Lambda console → **Monitor** tab → **View CloudWatch logs**
+2. Click the most recent log stream to view execution output
 
 ---
 
-## Method 2: Automated (OpenTofu/Terraform)
-
-**Time:** 5-10 minutes | **Difficulty:** Intermediate
+## Method 2: Automated — OpenTofu/Terraform _(Recommended)_
 
 ### Prerequisites
 
@@ -175,208 +136,118 @@ curl -fsSL https://get.opentofu.org/install-opentofu.sh | bash
 
 **Get AWS Credentials:**
 
-1. AWS Console → IAM → Users → Your User → **Security credentials**
+1. AWS Console → IAM → Users → your user → **Security credentials**
 2. Click **Create access key** → CLI/SDK
-3. Copy **Access Key ID** and **Secret Access Key**
+3. Copy the **Access Key ID** and **Secret Access Key**
 
 ### Step 1: Create Configuration
 
-Create `infra/terraform.tfvars`:
+```powershell
+cd infra
+Copy-Item terraform.tfvars.example terraform.tfvars
+```
+
+Edit `infra/terraform.tfvars`:
 
 ```hcl
-aws_access_key = "YOUR_AWS_ACCESS_KEY_ID"
-aws_secret_key = "YOUR_AWS_SECRET_ACCESS_KEY"
+aws_access_key = "YOUR_ACCESS_KEY_ID"
+aws_secret_key = "YOUR_SECRET_ACCESS_KEY"
 aws_region     = "ap-south-1"
 project_name   = "superbox"
 ```
 
-> Never commit this file to git (already in .gitignore)
+> Never commit this file — it is already in `.gitignore`.
 
 ### Step 2: Package Lambda
 
-**Windows:**
-
 ```powershell
-cd infra
+# Windows (from infra/)
 .\scripts\package_lambda.ps1
 ```
 
-**Linux/macOS:**
-
 ```bash
-cd infra
+# Linux/macOS (from infra/)
 chmod +x scripts/package_lambda.sh
 ./scripts/package_lambda.sh
 ```
 
-### Step 3: Initialize
+This builds `modules/lambda/lambda_payload.zip` from `aws/lambda.py`.
+
+### Step 3: Deploy
 
 ```bash
 cd infra
-tofu init
+tofu init    # download providers
+tofu plan    # preview — expect ~12 resources to add
+tofu apply   # type "yes", takes 1-2 minutes
 ```
 
-Expected: `Terraform has been successfully initialized!`
+### Step 4: Save Outputs
 
-### Step 4: Preview Changes
+After `tofu apply` completes:
+
+```
+s3_bucket_name       = "superbox-mcp-registry"
+websocket_url        = "wss://xxxxxxxxxx.execute-api.ap-south-1.amazonaws.com/production"
+lambda_function_name = "superbox-mcp-executor"
+cloudwatch_log_group = "/aws/lambda/superbox-mcp-executor"
+```
+
+Copy `s3_bucket_name` and `websocket_url` — you need these in your `.env`.
+
+---
+
+## Useful Commands
 
 ```bash
-tofu plan
+tofu output                        # view all outputs
+tofu output -raw websocket_url     # get WebSocket URL
+tofu show                          # inspect current state
+tofu apply                         # re-apply after code changes
+tofu destroy                       # tear down all resources
 ```
 
-Expected: `Plan: 8 to add, 0 to change, 0 to destroy`
-
-Resources to be created:
-
-- S3 bucket
-- IAM role + policies
-- Lambda function
-- Function URL
-- CloudWatch log group
-
-### Step 5: Deploy
-
-```bash
-tofu apply
-```
-
-Type `yes` when prompted. Wait 1-2 minutes.
-
-Expected output:
-
-```
-Apply complete! Resources: 8 added, 0 changed, 0 destroyed.
-
-Outputs:
-lambda_function_url = "https://abc123xyz.lambda-url.ap-south-1.on.aws/"
-s3_bucket_name = "superbox-registry-prod"
-lambda_function_name = "superbox-executor"
-```
-
-### Step 6: Test
+**Update Lambda code after changes:**
 
 ```powershell
-# Get Function URL
-$url = tofu output -raw lambda_function_url
-
-# Test health
-Invoke-RestMethod -Uri "${url}health" -Method GET
-
-# Test list
-Invoke-RestMethod -Uri "${url}list" -Method GET
+.\scripts\package_lambda.ps1
+tofu apply
 ```
 
----
-
-## API Endpoints
-
-| Path      | Method | Description      | Example Response                                        |
-| --------- | ------ | ---------------- | ------------------------------------------------------- |
-| `/`       | GET    | Root endpoint    | `{"message": "SuperBox MCP Executor"}`                  |
-| `/health` | GET    | Health check     | `{"status": "healthy", "service": "superbox-executor"}` |
-| `/list`   | GET    | List all servers | `{"servers": [...]}`                                    |
-| `/search` | POST   | Search servers   | `{"results": [...]}`                                    |
-
-**POST Request Body Example:**
-
-```json
-{
-  "query": "search term"
-}
-```
-
----
-
-## Useful Commands (OpenTofu)
+**View live logs:**
 
 ```bash
-# View all outputs
-tofu output
-
-# View specific output
-tofu output lambda_function_url
-
-# View current state
-tofu show
-
-# Update infrastructure after code changes
-tofu plan
-tofu apply
-
-# Destroy all resources
-tofu destroy
+aws logs tail /aws/lambda/superbox-mcp-executor --follow
 ```
 
 ---
 
 ## Troubleshooting
 
-### Credentials Error
-
-```
-Error: error configuring Terraform AWS Provider
-```
-
-**Solution:** Check `terraform.tfvars` has correct AWS credentials
-
-### Bucket Already Exists
-
-```
-Error: BucketAlreadyExists
-```
-
-**Solution:** Change `project_name` in `terraform.tfvars` to make bucket name unique
-
-### Permission Error
-
-```
-Error: AccessDenied
-```
-
-**Solution:** AWS user needs IAM, S3, Lambda, CloudWatch permissions
-
-### Lambda Execution Errors
-
-**Solution:** Check CloudWatch logs at `/aws/lambda/superbox-executor`
+| Error                                      | Solution                                                                |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| `error configuring Terraform AWS Provider` | Check `terraform.tfvars` credentials                                    |
+| `BucketAlreadyExists`                      | Change `project_name` — bucket name must be globally unique             |
+| `AccessDenied`                             | IAM user needs S3, Lambda, IAM, CloudWatch, and API Gateway permissions |
+| Lambda runtime errors                      | Check CloudWatch at `/aws/lambda/superbox-mcp-executor`                 |
 
 ---
 
 ## Cost Estimate
 
-| Service         | Monthly Cost                     |
-| --------------- | -------------------------------- |
-| S3 Storage      | $0.10 - $1.00                    |
-| Lambda          | $0.00 - $0.50 (1M requests free) |
-| CloudWatch Logs | $0.00 - $0.10 (5GB free)         |
-| Data Transfer   | $0.00 - $0.50 (100GB free)       |
-| **Total**       | **$0.10 - $2.00**                |
+| Service          | Monthly Cost                |
+| ---------------- | --------------------------- |
+| S3 Storage       | ₹9 – ₹85 (1M requests free) |
+| Lambda           | ₹0 – ₹42 (1M requests free) |
+| API Gateway (WS) | ₹0 – ₹85 (1M messages free) |
+| CloudWatch Logs  | ₹0 – ₹9 (5 GB free)         |
+| **Total**        | **₹9 – ₹210**               |
 
-> Most usage stays within AWS Free Tier
-
----
-
-## Next Steps
-
-**After Deployment:**
-
-- Test all API endpoints
-- Upload test MCP server to S3
-- Integrate Function URL into CLI
-- Set up CloudWatch alerts
-- Configure custom domain (optional)
-
-**Production Hardening:**
-
-- Restrict S3 bucket policy
-- Replace S3FullAccess with limited policy
-- Enable CloudTrail audit logging
-- Add API rate limiting
-- Implement authentication
-- Enable S3 versioning
+> Most usage stays within AWS Free Tier.
 
 ---
 
 ## Support
 
-- **Logs:** CloudWatch at `/aws/lambda/superbox-executor`
+- **Logs:** CloudWatch at `/aws/lambda/superbox-mcp-executor`
 - **State:** Stored locally at `infra/terraform.tfstate`

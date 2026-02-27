@@ -88,11 +88,6 @@ def check_server(bucket_name: str, server_name: str) -> Tuple[bool, Dict[str, An
     return (data is not None, data or {})
 
 
-def find_server(bucket_name: str, server_name: str) -> Optional[Dict[str, Any]]:
-    """Find a server by name using per-file storage."""
-    return get_server(bucket_name, server_name)
-
-
 def upsert_server(bucket_name: str, server_name: str, server_data: Dict[str, Any]) -> bool:
     """Create or update a single MCP server file <name>.json, preserving created_at if present."""
     existing = get_server(bucket_name, server_name)
