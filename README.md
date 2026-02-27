@@ -13,6 +13,17 @@ ___ _   _ _ __   ___ _ __| |__   _____  __  __ _ _
 
 </div>
 
+<div align="center">
+
+[![CI](https://github.com/areebahmeddd/superbox.ai/actions/workflows/ci.yaml/badge.svg?branch=prod)](https://github.com/areebahmeddd/superbox.ai/actions/workflows/ci.yaml)
+[![PyPI version](https://img.shields.io/pypi/v/superbox)](https://pypi.org/project/superbox)
+[![PyPI downloads](https://img.shields.io/pypi/dm/superbox)](https://pypi.org/project/superbox)
+[![Python](https://img.shields.io/pypi/pyversions/superbox)](https://pypi.org/project/superbox)
+[![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![License](https://img.shields.io/github/license/areebahmeddd/superbox.ai)](LICENSE)
+
+</div>
+
 # 🧰 SuperBox
 
 **SuperBox** (inspired by [Docker Hub](https://hub.docker.com)) helps you discover, deploy, and test MCPs in isolated sandboxes. It includes:
@@ -106,6 +117,13 @@ The SuperBox CLI provides commands for authentication, server management, and te
 For detailed CLI documentation and usage examples, see [https://superbox.1mindlabs.org/docs/cli](https://acm-aa28ebf6.mintlify.app/cli)
 
 ## 📦 Installation
+
+```bash
+pip install superbox
+```
+
+- **PyPI:** [https://pypi.org/project/superbox](https://pypi.org/project/superbox)
+- **npm:** coming soon
 
 See [docs/INSTALL.md](docs/INSTALL.md) for complete installation instructions.
 
