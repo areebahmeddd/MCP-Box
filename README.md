@@ -35,19 +35,19 @@ ___ _   _ _ __   ___ _ __| |__   _____  __  __ _ _
 Why this project:
 
 - There's no centralized MCP registry to discover all MCPs, and many lack clear usage docs.
-- MCPs on our platform pass a 5‑step security/quality check (SonarQube, Bandit, GitGuardian) to reduce vulnerabilities and promote best practices.
+- MCPs on our platform pass a 5-step security/quality check (SonarQube, Bandit, GitGuardian) to reduce vulnerabilities and promote best practices.
 - Unlike MCPs that run locally on your machine, MCP servers here execute in sandboxed environments and return responses securely.
 
 ## Key Features
 
-- **Central MCP Registry**: S3‑backed registry with per‑server JSON for easy discovery and portability.
+- **Central MCP Registry**: S3-backed registry with per-server JSON for easy discovery and portability.
 - **Sandboxed Execution**: MCP servers run in isolated environments and return responses securely.
-- **Security Pipeline (5‑step)**: SonarQube, Bandit, and GitGuardian checks with a unified report.
-- **One‑Command Publish**: `superbox push` scans, discovers tools, and uploads a unified record to S3.
-- **Client Auto‑Config**: `superbox pull --client cursor|vscode|...` writes correct MCP config pointing to the Lambda endpoint.
+- **Security Pipeline (5-step)**: SonarQube, Bandit, and GitGuardian checks with a unified report.
+- **One-Command Publish**: `superbox push` scans, discovers tools, and uploads a unified record to S3.
+- **Client Auto-Config**: `superbox pull --client cursor|vscode|...` writes correct MCP config pointing to the Lambda endpoint.
 - **Terminal Runner**: `superbox run --name <server>` starts an interactive prompt against the Lambda executor.
 - **CloudWatch Logs**: `superbox logs --name <server>` fetches execution logs from AWS with real-time follow support.
-- **Tool Discovery**: Regex‑based discovery across Python code and optional Node `package.json` definitions.
+- **Tool Discovery**: Regex-based discovery across Python code and optional Node `package.json` definitions.
 
 > **Note:** The Lambda executor currently supports Python MCP servers.
 
@@ -55,13 +55,21 @@ Why this project:
 
 **For complete documentation, setup guides, API references, and CLI usage:**
 
-🔗 **[https://superbox.1mindlabs.org/docs](https://acm-aa28ebf6.mintlify.app)**
+🔗 **[https://superbox.1mindlabs.org/docs](https://superbox.1mindlabs.org/docs)**
+
+## 📄 Research Paper
+
+The IEEE research paper for SuperBox is available in the [`ieee/`](ieee/) directory:
+
+- [`paper.pdf`](ieee/paper.pdf) – compiled paper
+- [`paper.tex`](ieee/paper.tex) – LaTeX source
 
 ## 🗂️ Project Structure
 
 ```text
 .
 ├── docs/                       # Documentation (INSTALL.md)
+├── ieee/                       # IEEE research paper (paper.pdf, paper.tex)
 ├── src/
 │   └── superbox/
 │       ├── cli/                # CLI: init, auth, push, pull, run, search, inspect, test, logs
@@ -86,7 +94,8 @@ Why this project:
 
 The HTTP API provides endpoints for server management, authentication, and payments.
 
-For complete API documentation, see [https://superbox.1mindlabs.org/docs/api](https://acm-aa28ebf6.mintlify.app/api)
+For complete API documentation, see:
+[https://superbox.1mindlabs.org/docs/api](https://superbox.1mindlabs.org/docs/api)
 
 ## 🔧 CLI Overview
 
@@ -114,7 +123,8 @@ The SuperBox CLI provides commands for authentication, server management, and te
 - `superbox run` – Run server in interactive mode
 - `superbox logs` – View server execution logs
 
-For detailed CLI documentation and usage examples, see [https://superbox.1mindlabs.org/docs/cli](https://acm-aa28ebf6.mintlify.app/cli)
+For detailed CLI documentation and usage examples, see:
+[https://superbox.1mindlabs.org/docs/cli](https://superbox.1mindlabs.org/docs/cli)
 
 ## 📦 Installation
 
