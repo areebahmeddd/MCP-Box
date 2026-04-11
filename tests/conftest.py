@@ -1,17 +1,14 @@
-import json
-from pathlib import Path
-
 import boto3
 import pytest
 from moto import mock_aws
 
 FAKE_ENV: dict[str, str] = {
     "SUPERBOX_API_URL": "http://localhost:8000/api/v1",
-    "AWS_REGION": "ap-south-1",
-    "AWS_ACCESS_KEY_ID": "testing",
-    "AWS_SECRET_ACCESS_KEY": "testing",
-    "S3_BUCKET_NAME": "test-superbox-registry",
-    "WEBSOCKET_URL": "wss://example.execute-api.ap-south-1.amazonaws.com/production",
+    "CLOUDFLARE_ACCOUNT_ID": "fake-account-id",
+    "CLOUDFLARE_R2_ACCESS_KEY_ID": "testing",
+    "CLOUDFLARE_R2_SECRET_ACCESS_KEY": "testing",
+    "CLOUDFLARE_R2_BUCKET_NAME": "test-superbox-registry",
+    "CLOUDFLARE_WORKER_URL": "https://superbox-executor.example.workers.dev",
     "FIREBASE_API_KEY": "fake-firebase-key",
     "FIREBASE_PROJECT_ID": "fake-project",
     "SONAR_TOKEN": "fake-sonar-token",
@@ -22,36 +19,37 @@ FAKE_ENV: dict[str, str] = {
     "RAZORPAY_KEY_SECRET": "fake-rzp-secret",
 }
 
-# Rendered .env file content used by CLI commands that read from cwd/.env
 FAKE_ENV_CONTENT: str = "\n".join(f"{k}={v}" for k, v in FAKE_ENV.items()) + "\n"
 
 
 @pytest.fixture(autouse=True)
 def set_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Inject all required environment variables for every test."""
     for key, value in FAKE_ENV.items():
         monkeypatch.setenv(key, value)
 
 
 @pytest.fixture
 def s3_bucket():
-    """
-    Start a moto-mocked AWS session, create the test bucket, and yield its name.
-    The mock is torn down automatically after each test.
-    """
     with mock_aws():
-        client = boto3.client("s3", region_name="ap-south-1")
-        bucket_name = FAKE_ENV["S3_BUCKET_NAME"]
-        client.create_bucket(
-            Bucket=bucket_name,
-            CreateBucketConfiguration={"LocationConstraint": "ap-south-1"},
-        )
+        import superbox.shared.s3 as s3_module
+
+        real_s3_client = s3_module.s3_client
+
+        def patched_s3_client():
+            return boto3.client("s3", region_name="us-east-1")
+
+        s3_module.s3_client = patched_s3_client
+
+        client = boto3.client("s3", region_name="us-east-1")
+        bucket_name = FAKE_ENV["CLOUDFLARE_R2_BUCKET_NAME"]
+        client.create_bucket(Bucket=bucket_name)
         yield bucket_name
+
+        s3_module.s3_client = real_s3_client
 
 
 @pytest.fixture
 def sample_server() -> dict:
-    """Return a complete, valid MCP server payload."""
     return {
         "name": "weather-mcp",
         "version": "1.0.0",
@@ -69,20 +67,3 @@ def sample_server() -> dict:
             "updated_at": "2025-12-10T00:00:00+00:00",
         },
     }
-
-
-@pytest.fixture
-def auth_tokens(tmp_path: Path) -> dict:
-    """Write a fake auth token file and return the payload."""
-    payload = {
-        "email": "test@example.com",
-        "id_token": "fake-id-token",
-        "refresh_token": "fake-refresh-token",
-        "expires_in": 3600,
-        "local_id": "uid-12345",
-        "provider": "password",
-    }
-    auth_dir = tmp_path / ".superbox"
-    auth_dir.mkdir()
-    (auth_dir / "auth.json").write_text(json.dumps(payload))
-    return payload

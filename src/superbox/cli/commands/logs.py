@@ -1,9 +1,7 @@
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta
 
 import click
-import boto3
 
 from superbox.shared import s3
 from superbox.shared.config import Config, load_env
@@ -15,9 +13,10 @@ from superbox.shared.config import Config, load_env
     "--follow",
     "-f",
     is_flag=True,
-    help="Follow log output in real-time",
+    help="Show real-time tail instructions",
 )
 def logs(name: str, follow: bool) -> None:
+    """View execution logs for an MCP server (via Cloudflare Workers)."""
     try:
         env_path = Path.cwd() / ".env"
         if not env_path.exists():
@@ -27,7 +26,7 @@ def logs(name: str, follow: bool) -> None:
         load_env(env_path)
         cfg = Config()
 
-        bucket = cfg.S3_BUCKET_NAME
+        bucket = cfg.CLOUDFLARE_R2_BUCKET_NAME
 
         click.echo(f"\nFetching server '{name}' from registry...")
         server = s3.get_server(bucket, name)
@@ -38,142 +37,33 @@ def logs(name: str, follow: bool) -> None:
 
         click.echo(f"Server found: {server.get('description', 'No description')}")
 
-        log_group_name = "/aws/lambda/superbox-mcp-executor"
-
-        logs_client = boto3.client(
-            "logs",
-            region_name=cfg.AWS_REGION,
-            aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,
-        )
-
-        try:
-            response = logs_client.describe_log_groups(logGroupNamePrefix=log_group_name, limit=1)
-            if not response.get("logGroups"):
-                raise Exception("Log group not found")
-        except Exception:
-            click.echo(
-                f"\nWarning: Unable to access CloudWatch logs for '{name}' (may not have been executed yet)"
-            )
-            click.echo(f"Expected log group: {log_group_name}\n")
-            sys.exit(1)
+        click.echo("\n" + "=" * 70)
+        click.echo("Cloudflare Workers Logs")
+        click.echo("=" * 70)
+        click.echo("\nLogs are streamed via the Wrangler CLI or Cloudflare Dashboard.\n")
 
         if follow:
-            click.echo("\nFollowing logs (Press Ctrl+C to stop)...\n")
-            _follow_logs(logs_client, log_group_name, name)
+            click.echo("To tail logs in real-time, run:\n")
+            click.echo("  wrangler tail superbox-executor --format pretty\n")
+            click.echo(
+                f"This streams all Worker invocations including session activity for '{name}'."
+            )
         else:
-            click.echo("\nFetching recent logs...\n")
-            _fetch_logs(logs_client, log_group_name, name)
+            click.echo("To view recent logs:")
+            click.echo()
+            click.echo("  Option 1 - Wrangler CLI (real-time):")
+            click.echo("    wrangler tail superbox-executor --format pretty")
+            click.echo()
+            click.echo("  Option 2 - Cloudflare Dashboard:")
+            click.echo("    https://dash.cloudflare.com -> Workers & Pages")
+            click.echo("    -> superbox-executor -> Logs")
+            click.echo()
+            click.echo(
+                f"Filter by server name in the log stream to see only activity for '{name}'."
+            )
 
-    except KeyboardInterrupt:
-        click.echo("\n\nStopped following logs")
-        sys.exit(0)
+        click.echo("=" * 70)
+
     except Exception as e:
         click.echo(f"\nError: {str(e)}")
         sys.exit(1)
-
-
-def _fetch_logs(logs_client, log_group_name: str, server_name: str = None) -> None:
-    start_time = int((datetime.now() - timedelta(hours=1)).timestamp() * 1000)
-    end_time = int(datetime.now().timestamp() * 1000)
-
-    try:
-        filter_pattern = f'"{server_name}"' if server_name else ""
-
-        response = logs_client.filter_log_events(
-            logGroupName=log_group_name,
-            startTime=start_time,
-            endTime=end_time,
-            limit=100,
-            interleaved=True,
-            filterPattern=filter_pattern,
-        )
-
-        events = response.get("events", [])
-
-        if not events:
-            if server_name:
-                click.echo(f"No log entries found for '{server_name}' in the past hour")
-            else:
-                click.echo("No log entries found in the past hour")
-            return
-
-        click.echo("=" * 80)
-        if server_name:
-            click.echo(f"Logs for MCP server '{server_name}' (showing {len(events)} entries)")
-        else:
-            click.echo(f"Logs for MCP server (showing {len(events)} entries)")
-        click.echo("=" * 80 + "\n")
-
-        for event in events:
-            timestamp = datetime.fromtimestamp(event["timestamp"] / 1000)
-            message = event["message"].rstrip()
-
-            time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            click.echo(f"[{time_str}] {message}")
-
-        click.echo("\n" + "=" * 80)
-        click.echo(f"End of logs ({len(events)} entries)")
-        click.echo("=" * 80 + "\n")
-
-    except logs_client.exceptions.ResourceNotFoundException:
-        click.echo(f"Error: Log group '{log_group_name}' not found")
-        click.echo("The MCP server may not have been executed yet")
-        sys.exit(1)
-    except Exception as e:
-        click.echo(f"Error fetching logs: {str(e)}")
-        sys.exit(1)
-
-
-def _follow_logs(logs_client, log_group_name: str, server_name: str = None) -> None:
-    import time
-
-    last_timestamp = int((datetime.now() - timedelta(minutes=5)).timestamp() * 1000)
-    seen_event_ids = set()
-
-    click.echo("=" * 80)
-    if server_name:
-        click.echo(f"Following logs for MCP server '{server_name}'")
-    else:
-        click.echo("Following logs for MCP server")
-    click.echo("=" * 80 + "\n")
-
-    try:
-        while True:
-            try:
-                filter_pattern = f'"{server_name}"' if server_name else ""
-
-                response = logs_client.filter_log_events(
-                    logGroupName=log_group_name,
-                    startTime=last_timestamp,
-                    interleaved=True,
-                    filterPattern=filter_pattern,
-                )
-                events = response.get("events", [])
-
-                for event in events:
-                    event_id = event["eventId"]
-                    if event_id in seen_event_ids:
-                        continue
-
-                    seen_event_ids.add(event_id)
-                    timestamp = datetime.fromtimestamp(event["timestamp"] / 1000)
-                    message = event["message"].rstrip()
-
-                    time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                    click.echo(f"[{time_str}] {message}")
-
-                    if event["timestamp"] > last_timestamp:
-                        last_timestamp = event["timestamp"]
-
-            except logs_client.exceptions.ResourceNotFoundException:
-                click.echo(f"\nError: Log group '{log_group_name}' not found")
-                click.echo("The MCP server may not have been executed yet")
-                sys.exit(1)
-            except Exception as e:
-                click.echo(f"\nError following logs: {str(e)}")
-
-            time.sleep(2)
-
-    except KeyboardInterrupt:
-        raise

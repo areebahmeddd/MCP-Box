@@ -9,13 +9,8 @@ from superbox.cli.utils import config_path
 from superbox.shared.config import Config, load_env
 
 
-def get_path() -> str:
-    """Get the Python executable path (venv if active, otherwise sys.executable)"""
-    return sys.executable
-
-
-def get_repo(repo_url: str) -> str:
-    """Extract repository name from URL"""
+def get_repo_name(repo_url: str) -> str:
+    """Extract repository name from URL."""
     repo_url = repo_url.strip().rstrip("/")
 
     if repo_url.startswith("git@github.com:"):
@@ -26,8 +21,6 @@ def get_repo(repo_url: str) -> str:
     repo_url = repo_url.replace(".git", "")
     parts = repo_url.split("/")
 
-    if len(parts) >= 2:
-        return parts[-1]
     return parts[-1] if parts else "unknown"
 
 
@@ -40,9 +33,8 @@ def get_repo(repo_url: str) -> str:
     help="Target client to write config for",
 )
 @click.option("--entrypoint", default="main.py", help="Entrypoint file (default: main.py)")
-@click.option("--lang", default="python", help="Language (default: python)")
-def test(url: str, client: str, entrypoint: str, lang: str) -> None:
-    """Test MCP server directly from repository URL without S3 registration."""
+def test(url: str, client: str, entrypoint: str) -> None:
+    """Test MCP server directly from a repository URL without registry registration."""
     try:
         env_path = Path.cwd() / ".env"
         if not env_path.exists():
@@ -52,20 +44,21 @@ def test(url: str, client: str, entrypoint: str, lang: str) -> None:
         load_env(env_path)
         cfg = Config()
 
-        ws_url = cfg.WEBSOCKET_URL
-        if not ws_url:
-            click.echo("Error: WEBSOCKET_URL not found in .env file")
+        worker_url = cfg.CLOUDFLARE_WORKER_URL
+        if not worker_url:
+            click.echo("Error: CLOUDFLARE_WORKER_URL not found in .env file")
             sys.exit(1)
 
-        repo_name = get_repo(url)
+        worker_url = worker_url.rstrip("/")
+        repo_name = get_repo_name(url)
 
         click.echo("\n" + "=" * 70)
         click.echo("TEST MODE - No Security Checks")
         click.echo("=" * 70)
         click.echo("\nThis server is being tested directly and has NOT gone through:")
-        click.echo("  • Security scanning (SonarQube, Bandit, GitGuardian)")
-        click.echo("  • Quality checks")
-        click.echo("  • Registry validation")
+        click.echo("  * Security scanning (SonarQube, Bandit, GitGuardian)")
+        click.echo("  * Quality checks")
+        click.echo("  * Registry validation")
         click.echo("\nNOTE: This server will NOT be available on the platform.")
         click.echo("=" * 70 + "\n")
 
@@ -101,15 +94,27 @@ def test(url: str, client: str, entrypoint: str, lang: str) -> None:
                 sys.exit(0)
 
         encoded_url = quote(url, safe="")
-        ws_url_with_params = f"{ws_url}?name={test_server_name}&test_mode=true&repo_url={encoded_url}&entrypoint={entrypoint}&lang={lang}"
+        mcp_url = (
+            f"{worker_url}/mcp"
+            f"?name={test_server_name}"
+            f"&test_mode=true"
+            f"&repo_url={encoded_url}"
+            f"&entrypoint={entrypoint}"
+        )
 
-        python_exe = get_path()
+        if target == "vscode":
+            entry = {
+                "type": "http",
+                "url": mcp_url,
+            }
+        else:
+            entry = {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "mcp-remote", mcp_url],
+            }
 
-        client_config[config_section][test_server_name] = {
-            "type": "stdio",
-            "command": python_exe,
-            "args": ["-m", "superbox.aws.proxy", "--url", ws_url_with_params],
-        }
+        client_config[config_section][test_server_name] = entry
 
         with open(path, "w") as f:
             json.dump(client_config, f, indent=2)
@@ -120,10 +125,11 @@ def test(url: str, client: str, entrypoint: str, lang: str) -> None:
         click.echo(f"\nTest server '{test_server_name}' added to {display_target} MCP config")
         click.echo(f"Repository: {url}")
         click.echo(f"Entrypoint: {entrypoint}")
-        click.echo(f"Language: {lang}")
+        click.echo(f"Endpoint:   {mcp_url}")
         click.echo(f"\nConfig location: {path}")
         click.echo(
-            f"\nRestart {display_target} to use the test server. It will appear as '{test_server_name}'."
+            f"\nRestart {display_target} to use the test server. "
+            f"It will appear as '{test_server_name}'."
         )
 
     except Exception as e:

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 def scan_repo(repo_path: str) -> Dict[str, Any]:
     """
     Discover MCP tools from a repository by analyzing Python files.
-    Returns dict with tool_count and tool_names list.
+    Returns dict with tool count and tool names list.
     """
     tools = []
 
@@ -26,7 +26,7 @@ def scan_repo(repo_path: str) -> Dict[str, Any]:
 
     unique_tools = list(set(tools))
 
-    return {"tool_count": len(unique_tools), "tool_names": sorted(unique_tools)}
+    return {"count": len(unique_tools), "names": sorted(unique_tools)}
 
 
 def extract_tools(content: str) -> List[str]:
@@ -77,7 +77,7 @@ def scan_package(repo_path: str) -> Dict[str, Any]:
     package_json = Path(repo_path) / "package.json"
 
     if not package_json.exists():
-        return {"tool_count": 0, "tool_names": []}
+        return {"count": 0, "names": []}
 
     try:
         with open(package_json, "r") as f:
@@ -88,9 +88,9 @@ def scan_package(repo_path: str) -> Dict[str, Any]:
         if "mcp" in data and "tools" in data["mcp"]:
             tools = [tool.get("name") for tool in data["mcp"]["tools"] if "name" in tool]
 
-        return {"tool_count": len(tools), "tool_names": sorted(tools)}
+        return {"count": len(tools), "names": sorted(tools)}
     except Exception:
-        return {"tool_count": 0, "tool_names": []}
+        return {"count": 0, "names": []}
 
 
 def clone_repo(repo_url: str, target_dir: str) -> Optional[str]:
@@ -114,5 +114,5 @@ def discover_tools(repo_path: str) -> Dict[str, Any]:
     """Discover tools by scanning code and package.json, merged and deduplicated"""
     from_repo = scan_repo(repo_path)
     from_pkg = scan_package(repo_path)
-    names = sorted(list(set(from_repo.get("tool_names", []) + from_pkg.get("tool_names", []))))
-    return {"tool_count": len(names), "tool_names": names}
+    names = sorted(list(set(from_repo.get("names", []) + from_pkg.get("names", []))))
+    return {"count": len(names), "names": names}

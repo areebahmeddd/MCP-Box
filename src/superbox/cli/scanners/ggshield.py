@@ -8,6 +8,7 @@ from superbox.shared.config import Config
 
 
 def run_scan(repo_path: str) -> Dict[str, Any]:
+    """Run GitGuardian secret scan on a local repository path."""
     print("[GGShield] Scanning repository", file=sys.stderr)
     cfg = Config()
     env = dict(os.environ)

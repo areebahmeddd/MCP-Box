@@ -90,10 +90,24 @@ def _login_email(cfg: Config, email: Optional[str], password: Optional[str]) -> 
         raise RuntimeError(_error_text(response))
 
     data = response.json()
+    id_token = data.get("idToken")
+
+    display_name = ""
+    lookup_response = requests.post(
+        _identity_url("accounts:lookup", cfg.FIREBASE_API_KEY),
+        json={"idToken": id_token},
+        timeout=30,
+    )
+    if lookup_response.status_code == 200:
+        users = lookup_response.json().get("users", [])
+        if users:
+            display_name = users[0].get("displayName") or ""
+
     _save_auth(
         {
             "email": data.get("email") or email_value,
-            "id_token": data.get("idToken"),
+            "name": display_name,
+            "id_token": id_token,
             "refresh_token": data.get("refreshToken"),
             "expires_in": int(data.get("expiresIn", "0")),
             "local_id": data.get("localId"),

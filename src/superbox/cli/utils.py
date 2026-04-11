@@ -145,6 +145,7 @@ def show_summary(security_report: Dict[str, Any]) -> None:
 
 
 def config_path(app: str) -> Path:
+    """Return the MCP config file path for the given client app on the current OS."""
     app = app.lower()
     system = platform.system()
 

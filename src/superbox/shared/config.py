@@ -12,12 +12,12 @@ class Config:
         # API Configurations
         self.SUPERBOX_API_URL = get_env("SUPERBOX_API_URL")
 
-        # AWS Configurations
-        self.AWS_REGION = get_env("AWS_REGION")
-        self.AWS_ACCESS_KEY_ID = get_env("AWS_ACCESS_KEY_ID")
-        self.AWS_SECRET_ACCESS_KEY = get_env("AWS_SECRET_ACCESS_KEY")
-        self.S3_BUCKET_NAME = get_env("S3_BUCKET_NAME")
-        self.WEBSOCKET_URL = get_env("WEBSOCKET_URL")
+        # Cloudflare Configurations
+        self.CLOUDFLARE_ACCOUNT_ID = get_env("CLOUDFLARE_ACCOUNT_ID")
+        self.CLOUDFLARE_R2_ACCESS_KEY_ID = get_env("CLOUDFLARE_R2_ACCESS_KEY_ID")
+        self.CLOUDFLARE_R2_SECRET_ACCESS_KEY = get_env("CLOUDFLARE_R2_SECRET_ACCESS_KEY")
+        self.CLOUDFLARE_R2_BUCKET_NAME = get_env("CLOUDFLARE_R2_BUCKET_NAME")
+        self.CLOUDFLARE_WORKER_URL = get_env("CLOUDFLARE_WORKER_URL")
 
         # Firebase Configurations
         self.FIREBASE_API_KEY = get_env("FIREBASE_API_KEY")
@@ -43,10 +43,10 @@ class Config:
         """Validate required configuration for server"""
         required = {
             "SUPERBOX_API_URL": self.SUPERBOX_API_URL,
-            "AWS_REGION": self.AWS_REGION,
-            "AWS_ACCESS_KEY_ID": self.AWS_ACCESS_KEY_ID,
-            "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
-            "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
+            "CLOUDFLARE_ACCOUNT_ID": self.CLOUDFLARE_ACCOUNT_ID,
+            "CLOUDFLARE_R2_ACCESS_KEY_ID": self.CLOUDFLARE_R2_ACCESS_KEY_ID,
+            "CLOUDFLARE_R2_SECRET_ACCESS_KEY": self.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+            "CLOUDFLARE_R2_BUCKET_NAME": self.CLOUDFLARE_R2_BUCKET_NAME,
             "FIREBASE_API_KEY": self.FIREBASE_API_KEY,
             "FIREBASE_PROJECT_ID": self.FIREBASE_PROJECT_ID,
             "RAZORPAY_KEY_ID": self.RAZORPAY_KEY_ID,
@@ -61,10 +61,10 @@ class Config:
         """Validate required configuration for CLI"""
         required = {
             "SUPERBOX_API_URL": self.SUPERBOX_API_URL,
-            "AWS_REGION": self.AWS_REGION,
-            "AWS_ACCESS_KEY_ID": self.AWS_ACCESS_KEY_ID,
-            "AWS_SECRET_ACCESS_KEY": self.AWS_SECRET_ACCESS_KEY,
-            "S3_BUCKET_NAME": self.S3_BUCKET_NAME,
+            "CLOUDFLARE_ACCOUNT_ID": self.CLOUDFLARE_ACCOUNT_ID,
+            "CLOUDFLARE_R2_ACCESS_KEY_ID": self.CLOUDFLARE_R2_ACCESS_KEY_ID,
+            "CLOUDFLARE_R2_SECRET_ACCESS_KEY": self.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+            "CLOUDFLARE_R2_BUCKET_NAME": self.CLOUDFLARE_R2_BUCKET_NAME,
             "FIREBASE_API_KEY": self.FIREBASE_API_KEY,
             "FIREBASE_PROJECT_ID": self.FIREBASE_PROJECT_ID,
             "SONAR_TOKEN": self.SONAR_TOKEN,

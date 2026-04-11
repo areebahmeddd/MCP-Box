@@ -125,7 +125,7 @@ var securityHelperFn = callSecurityHelper
 
 func getServer(c *gin.Context) {
 	serverName := c.Param("server_name")
-	bucketName := os.Getenv("S3_BUCKET_NAME")
+	bucketName := os.Getenv("CLOUDFLARE_R2_BUCKET_NAME")
 
 	result, err := s3HelperFn("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
@@ -177,7 +177,7 @@ func getServer(c *gin.Context) {
 }
 
 func listServers(c *gin.Context) {
-	bucketName := os.Getenv("S3_BUCKET_NAME")
+	bucketName := os.Getenv("CLOUDFLARE_R2_BUCKET_NAME")
 	authorFilter := c.Query("author")
 
 	result, err := s3HelperFn("list_servers", map[string]interface{}{
@@ -251,7 +251,7 @@ func createServer(c *gin.Context) {
 		return
 	}
 
-	bucketName := os.Getenv("S3_BUCKET_NAME")
+	bucketName := os.Getenv("CLOUDFLARE_R2_BUCKET_NAME")
 
 	existing, err := s3HelperFn("get_server", map[string]interface{}{
 		"bucket_name": bucketName,
@@ -335,7 +335,7 @@ func createServer(c *gin.Context) {
 
 func updateServer(c *gin.Context) {
 	serverName := c.Param("server_name")
-	bucketName := os.Getenv("S3_BUCKET_NAME")
+	bucketName := os.Getenv("CLOUDFLARE_R2_BUCKET_NAME")
 
 	var req models.UpdateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -470,7 +470,7 @@ func updateServer(c *gin.Context) {
 
 func deleteServer(c *gin.Context) {
 	serverName := c.Param("server_name")
-	bucketName := os.Getenv("S3_BUCKET_NAME")
+	bucketName := os.Getenv("CLOUDFLARE_R2_BUCKET_NAME")
 
 	existing, err := s3HelperFn("get_server", map[string]interface{}{
 		"bucket_name": bucketName,

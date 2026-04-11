@@ -26,11 +26,11 @@ ___ _   _ _ __   ___ _ __| |__   _____  __  __ _ _
 
 # 🧰 SuperBox
 
-**SuperBox** (inspired by [Docker Hub](https://hub.docker.com)) helps you discover, deploy, and test MCPs in isolated sandboxes. It includes:
+**SuperBox** (inspired by [Docker Hub](https://hub.docker.com)) helps you discover, deploy, and test MCPs in isolated sandboxes ( [Demo Video]() ). It includes:
 
-- A Python (Click) CLI to initialize metadata, run security scans, push to a registry (S3), search, and configure popular AI clients (VS Code, Cursor, Windsurf, Claude, ChatGPT)
+- A Python (Click) CLI to initialize metadata, run security scans, push to a registry (R2), search, and configure popular AI clients (VS Code, Cursor, Windsurf, Claude, ChatGPT)
 - A Golang (Gin) backend to list/get/create MCP servers with optional pricing and security reports
-- An AWS Lambda worker that executes MCP servers on demand directly from their Git repositories
+- A Cloudflare Worker + Durable Object executor that runs MCP servers on demand directly from their Git repositories using a lightweight TypeScript interpreter (Cloudflare Workers blocks `eval()` and exceeds the WASM bundle size limit, making Pyodide unusable)
 
 Why this project:
 
@@ -40,16 +40,14 @@ Why this project:
 
 ## Key Features
 
-- **Central MCP Registry**: S3-backed registry with per-server JSON for easy discovery and portability.
-- **Sandboxed Execution**: MCP servers run in isolated environments and return responses securely.
+- **Central MCP Registry**: R2-backed registry with per-server JSON for easy discovery and portability.
+- **Sandboxed Execution**: MCP servers run in Cloudflare Durable Objects and return responses securely. The executor supports `requests`-based HTTP tools; see `cloudflare/README.md` for the full scope.
 - **Security Pipeline (5-step)**: SonarQube, Bandit, and GitGuardian checks with a unified report.
-- **One-Command Publish**: `superbox push` scans, discovers tools, and uploads a unified record to S3.
-- **Client Auto-Config**: `superbox pull --client cursor|vscode|...` writes correct MCP config pointing to the Lambda endpoint.
-- **Terminal Runner**: `superbox run --name <server>` starts an interactive prompt against the Lambda executor.
-- **CloudWatch Logs**: `superbox logs --name <server>` fetches execution logs from AWS with real-time follow support.
+- **One-Command Publish**: `superbox push` scans, discovers tools, and uploads a unified record to R2.
+- **Client Auto-Config**: `superbox pull --client cursor|vscode|...` writes correct MCP config pointing to the Cloudflare Worker.
+- **Terminal Runner**: `superbox run --name <server>` starts an interactive prompt against the Cloudflare executor.
+- **Live Logs**: `superbox logs --name <server>` shows instructions for streaming logs via `wrangler tail`.
 - **Tool Discovery**: Regex-based discovery across Python code and optional Node `package.json` definitions.
-
-> **Note:** The Lambda executor currently supports Python MCP servers.
 
 ## 📚 Documentation
 
@@ -68,7 +66,7 @@ The IEEE research paper for SuperBox is available in the [`ieee/`](ieee/) direct
 
 ```text
 .
-├── docs/                       # Documentation (INSTALL.md)
+├── docs/                       # Documentation (INSTALL.md, SETUP.md)
 ├── ieee/                       # IEEE research paper (paper.pdf, paper.tex)
 ├── src/
 │   └── superbox/
@@ -78,16 +76,13 @@ The IEEE research paper for SuperBox is available in the [`ieee/`](ieee/) direct
 │       ├── server/             # Golang (Gin) app + handlers
 │       │   ├── handlers/       # servers, payment, auth, health
 │       │   ├── models/         # Request/response types
-│       │   ├── helpers/        # Python S3 helper
+│       │   ├── helpers/        # Python R2 helper
 │       │   └── templates/      # Landing page
-│       ├── shared/             # Config, models, S3 utils
-│       └── aws/                # AWS Lambda & WebSocket proxy
-│           ├── lambda.py       # Lambda handler (WebSocket executor)
-│           └── proxy.py        # Local stdio-WebSocket bridge
+│       └── shared/             # Config, models, R2/S3-compat utils
 ├── pyproject.toml              # Project metadata & dependencies
 ├── Dockerfile                  # Server container
 ├── docker-compose.yaml         # Optional local stack
-└── tests/                      # PyTests
+└── tests/                      # pytest suite - see tests/README.md
 ```
 
 ## 🌐 API Reference

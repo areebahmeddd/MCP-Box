@@ -9,6 +9,7 @@ from superbox.shared.config import Config, load_env
 
 
 def extract_repository(repo_url):
+    """Parse a GitHub URL and return (owner, repo) tuple."""
     repo_url = repo_url.strip().rstrip("/")
     if repo_url.startswith("git@github.com:"):
         repo_url = repo_url.replace("git@github.com:", "")
@@ -23,12 +24,14 @@ def extract_repository(repo_url):
 
 
 def generate_key(owner, repo, organization):
+    """Build a SonarCloud project key from owner, repo, and organization."""
     safe_owner = re.sub(r"[^a-zA-Z0-9_\-.]", "_", owner)
     safe_repo = re.sub(r"[^a-zA-Z0-9_\-.]", "_", repo)
     return f"{organization}_{safe_owner}_{safe_repo}"
 
 
 def create_project(project_key, project_name, sonar_host, sonar_token, sonar_org):
+    """Create a SonarCloud project; returns True if created or already exists."""
     url = f"{sonar_host}/api/projects/create"
     params = {"organization": sonar_org, "project": project_key, "name": project_name}
     headers = {"Authorization": f"Bearer {sonar_token}"}
@@ -51,6 +54,7 @@ def create_project(project_key, project_name, sonar_host, sonar_token, sonar_org
 
 
 def bind_repository(project_key, owner, repo, sonar_host, sonar_token, sonar_org):
+    """Bind a SonarCloud project to its GitHub repository."""
     url = f"{sonar_host}/api/alm_settings/set_github_binding"
     headers = {"Authorization": f"Bearer {sonar_token}"}
     params = {
@@ -67,6 +71,7 @@ def bind_repository(project_key, owner, repo, sonar_host, sonar_token, sonar_org
 
 
 def wait_analysis(project_key, sonar_host, sonar_token, max_wait=60):
+    """Poll the compute engine until the analysis succeeds or the timeout is reached."""
     url = f"{sonar_host}/api/ce/component"
     params = {"component": project_key}
     headers = {"Authorization": f"Bearer {sonar_token}"}
@@ -101,6 +106,7 @@ def wait_analysis(project_key, sonar_host, sonar_token, max_wait=60):
 
 
 def fetch_issues(project_key, sonar_host, sonar_token):
+    """Fetch all issues for a project, paginating through the full result set."""
     url = f"{sonar_host}/api/issues/search"
     headers = {"Authorization": f"Bearer {sonar_token}"}
     all_issues = []
@@ -128,6 +134,7 @@ def fetch_issues(project_key, sonar_host, sonar_token):
 
 
 def fetch_hotspots(project_key, sonar_host, sonar_token):
+    """Fetch all security hotspots for a project, paginating through the full result set."""
     url = f"{sonar_host}/api/hotspots/search"
     headers = {"Authorization": f"Bearer {sonar_token}"}
     all_hotspots = []
@@ -156,6 +163,7 @@ def fetch_hotspots(project_key, sonar_host, sonar_token):
 
 
 def fetch_measures(project_key, sonar_host, sonar_token):
+    """Fetch code quality metrics for a project and return them as a flat dict."""
     url = f"{sonar_host}/api/measures/component"
     headers = {"Authorization": f"Bearer {sonar_token}"}
     metric_keys = [
@@ -192,6 +200,7 @@ def fetch_measures(project_key, sonar_host, sonar_token):
 
 
 def create_report(repo_name, project_key, issues, hotspots, metrics, sonar_host):
+    """Assemble a structured analysis report from raw SonarCloud data."""
     bugs = [i for i in issues if i.get("type") == "BUG"]
     vulnerabilities = [i for i in issues if i.get("type") == "VULNERABILITY"]
     code_smells = [i for i in issues if i.get("type") == "CODE_SMELL"]
@@ -223,6 +232,7 @@ def create_report(repo_name, project_key, issues, hotspots, metrics, sonar_host)
 
 
 def run_analysis(repo_url, env_path=None):
+    """Run a full SonarCloud analysis for a GitHub repo URL and return a report dict."""
     load_env(env_path)
 
     SONAR_HOST = "https://sonarcloud.io"
