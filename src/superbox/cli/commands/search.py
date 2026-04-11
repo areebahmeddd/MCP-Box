@@ -19,7 +19,7 @@ def search() -> None:
         load_env(env_path)
         cfg = Config()
 
-        bucket = cfg.S3_BUCKET_NAME
+        bucket = cfg.CLOUDFLARE_R2_BUCKET_NAME
 
         servers = s3.list_servers(bucket)
 
@@ -33,7 +33,7 @@ def search() -> None:
 
         for name, data in servers.items():
             repo_url = data.get("repository", {}).get("url", "N/A")
-            tools_count = data.get("tool_count", 0)
+            tools_count = data.get("tools", {}).get("count", 0)
             description = data.get("description", "No description")
 
             click.echo(f"\n[{name}]")

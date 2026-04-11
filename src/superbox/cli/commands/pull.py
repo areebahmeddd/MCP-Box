@@ -9,11 +9,6 @@ from superbox.shared import s3
 from superbox.shared.config import Config, load_env
 
 
-def get_path() -> str:
-    """Get the Python executable path (venv if active, otherwise sys.executable)"""
-    return sys.executable
-
-
 @click.command()
 @click.option("--name", required=True, help="MCP server name to pull")
 @click.option(
@@ -33,14 +28,16 @@ def pull(name: str, client: str) -> None:
         load_env(env_path)
         cfg = Config()
 
-        ws_url = cfg.WEBSOCKET_URL
-        if not ws_url:
-            click.echo("Error: WEBSOCKET_URL not found in .env file")
+        worker_url = cfg.CLOUDFLARE_WORKER_URL
+        if not worker_url:
+            click.echo("Error: CLOUDFLARE_WORKER_URL not found in .env file")
             sys.exit(1)
 
-        bucket = cfg.S3_BUCKET_NAME
+        # Normalise trailing slash
+        worker_url = worker_url.rstrip("/")
+        bucket = cfg.CLOUDFLARE_R2_BUCKET_NAME
 
-        click.echo(f"\nFetching server '{name}' from S3 bucket '{bucket}'...")
+        click.echo(f"\nFetching server '{name}' from SuperBox Registry...")
 
         servers = s3.list_servers(bucket)
 
@@ -52,15 +49,14 @@ def pull(name: str, client: str) -> None:
             sys.exit(1)
 
         target = client.lower()
-
         path = config_path(target)
         path.parent.mkdir(parents=True, exist_ok=True)
 
         if path.exists():
             with open(path, "r") as f:
-                vscode_config = json.load(f)
+                client_config = json.load(f)
         else:
-            vscode_config = {}
+            client_config = {}
 
         display_target = {
             "vscode": "VS Code",
@@ -71,32 +67,40 @@ def pull(name: str, client: str) -> None:
         }.get(target, target)
 
         config_section = "servers" if target == "vscode" else "mcpServers"
-        vscode_config.setdefault(config_section, {})
+        client_config.setdefault(config_section, {})
 
-        if name in vscode_config.get(config_section, {}):
+        if name in client_config.get(config_section, {}):
             click.echo(f"Warning: Server '{name}' already exists in {display_target} configuration")
             if not click.confirm("Do you want to overwrite it?"):
                 click.echo("Aborted")
                 sys.exit(0)
 
-        ws_url_with_params = f"{ws_url}?name={name}"
+        mcp_url = f"{worker_url}/mcp?name={name}"
 
-        python_exe = get_path()
+        # VS Code 1.100+ supports native HTTP MCP transport
+        # All other clients use mcp-remote (npx) for bridging stdio → HTTP
+        if target == "vscode":
+            entry = {
+                "type": "http",
+                "url": mcp_url,
+            }
+        else:
+            entry = {
+                "type": "stdio",
+                "command": "npx",
+                "args": ["-y", "mcp-remote", mcp_url],
+            }
 
-        vscode_config[config_section][name] = {
-            "type": "stdio",
-            "command": python_exe,
-            "args": ["-m", "superbox.aws.proxy", "--url", ws_url_with_params],
-        }
+        client_config[config_section][name] = entry
 
         with open(path, "w") as f:
-            json.dump(vscode_config, f, indent=2)
+            json.dump(client_config, f, indent=2)
 
         click.echo("\n" + "=" * 70)
         click.echo("Success!")
         click.echo("=" * 70)
         click.echo(f"\nServer '{name}' added to {display_target} MCP config")
-        click.echo(f"WebSocket URL: {ws_url_with_params}")
+        click.echo(f"\nEndpoint: {mcp_url}")
         click.echo(f"\nLocation: {path}")
     except Exception as e:
         click.echo(f"\nError: {str(e)}")

@@ -8,17 +8,22 @@ from superbox.shared.config import Config
 
 
 def s3_client() -> Any:
-    """Create and return S3 client using shared Config values"""
+    """Create and return an S3-compatible client pointed at Cloudflare R2."""
     cfg = Config()
+    # R2 exposes an S3-compatible API at:
+    #   https://<account-id>.r2.cloudflarestorage.com
+    endpoint_url = f"https://{cfg.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
     return boto3.client(
         "s3",
-        region_name=cfg.AWS_REGION,
-        aws_access_key_id=cfg.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=cfg.AWS_SECRET_ACCESS_KEY,
+        endpoint_url=endpoint_url,
+        region_name="auto",
+        aws_access_key_id=cfg.CLOUDFLARE_R2_ACCESS_KEY_ID,
+        aws_secret_access_key=cfg.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
     )
 
 
 def _server_key(server_name: str) -> str:
+    """Return the R2 object key for a given server name."""
     return f"{server_name}.json"
 
 

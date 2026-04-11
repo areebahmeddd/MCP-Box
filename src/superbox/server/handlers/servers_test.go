@@ -22,8 +22,8 @@ func newServersRouter() *gin.Engine {
 
 func setBucketEnv(t *testing.T) {
 	t.Helper()
-	os.Setenv("S3_BUCKET_NAME", "test-bucket")
-	t.Cleanup(func() { os.Unsetenv("S3_BUCKET_NAME") })
+	os.Setenv("CLOUDFLARE_R2_BUCKET_NAME", "test-bucket")
+	t.Cleanup(func() { os.Unsetenv("CLOUDFLARE_R2_BUCKET_NAME") })
 }
 
 func TestListServers_Empty(t *testing.T) {

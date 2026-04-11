@@ -19,6 +19,7 @@ IDENTITY_BASE_URL = "https://identitytoolkit.googleapis.com/v1"
 
 
 def _read_auth() -> Optional[dict]:
+    """Load stored auth tokens from the local auth file, or return None."""
     if not AUTH_FILE.exists():
         return None
     try:
@@ -29,10 +30,12 @@ def _read_auth() -> Optional[dict]:
 
 
 def _identity_url(endpoint: str, api_key: str) -> str:
+    """Build a Firebase Identity Toolkit endpoint URL with the given API key."""
     return f"{IDENTITY_BASE_URL}/{endpoint}?key={api_key}"
 
 
 def _check_auth(cfg: Config) -> None:
+    """Verify stored credentials against Firebase; abort with an error message if invalid."""
     tokens = _read_auth()
     if not tokens or not tokens.get("id_token"):
         click.echo("Error: Authentication required to push servers to the registry.")
@@ -88,7 +91,7 @@ def push(
         cfg = Config()
         _check_auth(cfg)
 
-        bucket = cfg.S3_BUCKET_NAME
+        bucket = cfg.CLOUDFLARE_R2_BUCKET_NAME
 
         try:
             exists, _ = s3.check_server(bucket, name)
@@ -101,7 +104,7 @@ def push(
                 if force:
                     click.echo("Force flag set, will overwrite existing server")
         except Exception as e:
-            click.echo(f"Warning: Could not check S3 bucket: {str(e)}")
+            click.echo(f"Warning: Could not check R2 registry: {str(e)}")
             if not click.confirm("Continue anyway?"):
                 sys.exit(1)
 
@@ -172,7 +175,7 @@ def push(
 
                     show_summary(security_report)
                 else:
-                    tool_info = {"tool_count": 0, "tool_names": []}
+                    tool_info = {"count": 0, "names": []}
                     security_report = None
                     click.echo("   Could not discover tools (clone failed)")
             finally:
@@ -188,8 +191,8 @@ def push(
                 "entrypoint": config.get("entrypoint", "main.py"),
                 "repository": {"type": "git", "url": repo_url},
                 "tools": {
-                    "names": tool_info.get("tool_names", []),
-                    "count": tool_info.get("tool_count", 0),
+                    "count": tool_info.get("count", 0),
+                    "names": tool_info.get("names", []),
                 },
                 "pricing": config.get("pricing"),
                 "security_report": security_report,

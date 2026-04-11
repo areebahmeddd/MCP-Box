@@ -21,9 +21,9 @@ def inspect(name: str) -> None:
         load_env(env_path)
         cfg = Config()
 
-        bucket = cfg.S3_BUCKET_NAME
+        bucket = cfg.CLOUDFLARE_R2_BUCKET_NAME
 
-        click.echo(f"Fetching server '{name}' from S3 bucket '{bucket}'...")
+        click.echo(f"Fetching server '{name}' from R2 bucket '{bucket}'...")
 
         server = s3.get_server(bucket, name)
         if not server:

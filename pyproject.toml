@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "superbox"
-version = "0.5.0"
+version = "0.6.0"
 description = "Discover, deploy, and test MCPs in isolated sandboxes"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -24,25 +24,24 @@ classifiers = [
 ]
 
 dependencies = [
-    "python-dotenv",
-    "boto3",
-    "pydantic[email]",
-    "websockets",
-    "click",
-    "requests",
     "bandit",
+    "boto3",
+    "click",
     "ggshield",
+    "pydantic[email]",
+    "python-dotenv",
+    "requests",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pytest-cov",
-    "pytest-asyncio",
-    "moto[s3]",
     "freezegun",
-    "ruff",
+    "moto[s3]",
     "pre-commit",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff"
 ]
 all = [
     "superbox[dev]"

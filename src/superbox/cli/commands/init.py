@@ -6,6 +6,21 @@ from pathlib import Path
 from superbox.cli.scanners import sonarqube
 
 
+AUTH_FILE = Path.home() / ".superbox" / "auth.json"
+
+
+def _get_logged_in_name() -> str:
+    """Return the name (or email) from the local auth file, or empty string if not logged in."""
+    if not AUTH_FILE.exists():
+        return ""
+    try:
+        with open(AUTH_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("name") or data.get("email") or ""
+    except Exception:
+        return ""
+
+
 @click.command()
 def init() -> None:
     """Initialize superbox.json configuration file"""
@@ -30,7 +45,8 @@ def init() -> None:
     name = click.prompt("Server name", default=default_name)
     version = click.prompt("Version", default="1.0.0")
     description = click.prompt("Description", default=f"MCP server for {name}")
-    author = click.prompt("Author", default="")
+    default_author = _get_logged_in_name()
+    author = click.prompt("Author", default=default_author)
     lang = click.prompt("Language", default="Python")
     license_type = click.prompt("License", default="MIT")
     entrypoint = click.prompt("Entrypoint file", default="main.py")

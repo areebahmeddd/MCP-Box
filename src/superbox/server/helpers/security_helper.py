@@ -55,8 +55,8 @@ def scan_repository(repo_url: str, server_name: str) -> dict:
                 "success": True,
                 "security_report": security_report,
                 "tools": {
-                    "names": tool_info.get("tool_names", []),
-                    "count": tool_info.get("tool_count", 0),
+                    "names": tool_info.get("names", []),
+                    "count": tool_info.get("count", 0),
                 },
             }
         finally:

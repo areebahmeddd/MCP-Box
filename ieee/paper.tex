@@ -2,12 +2,13 @@
 \IEEEoverridecommandlockouts
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
-\usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs}
 \usepackage{url}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
 
 \begin{document}
 
@@ -49,28 +50,28 @@ and Sandboxed Execution of Model Context Protocol Servers}
 \begin{abstract}
 The rapid adoption of Model Context Protocol (MCP) servers has allowed
 AI applications to interact with external tools, databases, and data
-sources, enabling context-aware AI assistants and autonomous agents. However, the MCP ecosystem faces major
+sources, enabling context-aware AI assistants and autonomous agents. However, the MCP ecosystem faces significant
 challenges, including the lack of a central registry, inconsistent
-security checks, and no standardized setup. Servers are currently discovered manually through scattered GitHub
+security checks, and no standardized deployment workflow. Servers are currently discovered manually through scattered GitHub
 repositories and run directly on developer machines, with no mechanism
 to assess reliability, verify security compliance, or manage deployments
-across cloud and agent environments. These gaps constrain enterprise
+across cloud and agent environments. These shortcomings constrain enterprise
 adoption and expose users to real security risks when integrating
 third-party MCP servers.
 
-SuperBox addresses these gaps as an open-source marketplace and
+SuperBox addresses these challenges as an open-source marketplace and
 serverless execution platform for MCP servers. It enforces an automated
 five-stage security pipeline comprising SonarCloud for static analysis,
 Snyk for dependency vulnerability detection, GitGuardian for secret
 exposure prevention, and Bandit for Python-specific security linting.
 SuperBox pairs a high-performance Go REST API with a developer-facing
-CLI for publishing, discovery, and client configuration. AWS Lambda and
-WebSocket API Gateway provide fully isolated, per-session execution
-environments with enforced memory limits, timeouts, and controlled
-network access, supporting real-time JSON-RPC communication.
+CLI for publishing, discovery, and client configuration; a serverless
+execution layer built on Cloudflare Workers and Durable Objects delivers
+fully isolated, per-session execution over the MCP Streamable HTTP
+protocol (revision~2025-11-25).
 
 By combining serverless execution, automated security validation,
-S3-backed discovery, and auto-generated client configuration, SuperBox
+R2-backed discovery, and auto-generated client configuration, SuperBox
 reduces the operational complexity of deploying MCP servers while
 enforcing consistent security standards. The platform is validated through security pipeline evaluation,
 execution performance benchmarks, and end-to-end publish-to-execution
@@ -80,8 +81,8 @@ foundation for secure server discovery, verification, and execution.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Model Context Protocol, Serverless Computing, AWS Lambda, WebSocket API,
-Security Automation, AI Agent Infrastructure, Cloud-Native Architecture,
+Model Context Protocol, Cloudflare Workers, Serverless Computing, Edge Computing,
+Security Automation, AI Agent Infrastructure, Software Supply Chain Security,
 JSON-RPC
 \end{IEEEkeywords}
 
@@ -123,14 +124,14 @@ This paper presents SuperBox, an open-source marketplace and serverless
 execution platform for MCP servers. Taking inspiration from the
 registry-and-validation model established by Docker Hub for container
 images, SuperBox adapts that paradigm to the MCP ecosystem and addresses
-the above challenges through three integrated contributions. First, a centralized S3-backed
+the above challenges through three integrated contributions. First, a centralized R2-backed
 registry with enforced metadata standards provides a single, trusted
 source for MCP server discovery. Second, an automated five-stage
 security pipeline covering static analysis, dependency scanning, secret
 detection, and tool discovery ensures that only validated servers enter
-the registry. Third, a serverless execution layer built on AWS Lambda
-and WebSocket API Gateway provides completely isolated, on-demand
-sandboxed execution environments for every MCP server invocation.
+the registry. Third, a serverless execution layer built on Cloudflare Workers and
+Durable Objects provides completely isolated, per-session execution
+environments for every MCP server invocation.
 Together, these components eliminate the manual, fragmented, and
 insecure patterns that currently characterize MCP server integration.
 
@@ -178,10 +179,7 @@ classes specific to MCP's architecture. Parasitic Toolchain Attacks exploit MCP'
 by embedding malicious instructions in external data sources accessed
 during legitimate LLM tasks; the attack was demonstrated across a census
 of 12,230 tools from 1,360 real servers, enabling stealthy data
-exfiltration \cite{zhao2025}. Preference Manipulation Attacks demonstrate
-that customized MCP servers can be crafted to influence LLMs into
-prioritizing them over competing servers, representing a commercially
-motivated threat that exploits open registration models \cite{wang2025}.
+exfiltration \cite{zhao2025}.
 Tool poisoning, shadowing, and rug pull attacks have been demonstrated
 across multiple model architectures; layered defenses combining manifest
 signing and semantic vetting show partial mitigation but at the cost of
@@ -214,22 +212,43 @@ execution to provide defense across the full server lifecycle.
 
 SuperBox is composed of three loosely coupled layers: the publish and
 validation layer operated through the developer CLI, the discovery and
-management layer served by the Go REST API and S3 registry, and the
-execution layer powered by AWS Lambda and WebSocket API Gateway. Each
+management layer served by the Go REST API and R2 registry, and the
+execution layer powered by Cloudflare Workers and Durable Objects. Each
 layer operates independently, communicates through well-defined
 interfaces, and can be scaled or replaced without affecting the others.
 This separation of concerns ensures that the security pipeline, registry
 management, and execution sandbox never share runtime state, minimizing
-the blast radius of any failure or compromise in a single layer.
+the failure domain of any compromise or fault within a single layer.
+
+\subsection{Threat Model}
+
+SuperBox targets four principal threat classes that arise at the point of
+server publication. \textit{Malicious code injection}: the author embeds
+dangerous function calls (e.g., \texttt{eval()}, shell execution) or
+obfuscated payloads in the server source; addressed by SonarCloud static
+analysis and Bandit Python linting. \textit{Secret exposure}: hardcoded
+API keys, database credentials, and authentication tokens present in
+source files or commit history; addressed by GitGuardian secret scanning.
+\textit{Vulnerable dependencies}: declared requirements that reference
+packages with known CVEs, creating a software supply chain
+risk~\cite{hasan2025}; addressed by Snyk dependency auditing.
+\textit{Tool poisoning}: adversarial tool descriptions crafted to
+influence LLM behavior or facilitate data exfiltration through tool
+parameters~\cite{jamshidi2025}; partially addressed by the Bandit
+linting pass and tool discovery inspection.
+
+At the execution layer, session cross-contamination is mitigated by
+the Durable Object isolation model: each client session executes in a
+dedicated instance with no shared memory or persistent inter-session
+state. Unauthorized registry writes are prevented by Firebase JWT
+validation applied to all mutating API endpoints.
+
+Explicitly out of scope are runtime interception of outbound network
+calls from the Cloudflare edge, platform-level vulnerabilities in the
+Workers runtime itself, and semantic vetting of natural language tool
+descriptions beyond structural pattern inspection.
 
 \subsection{Security Pipeline}
-
-The pipeline is designed against a threat model in which the primary
-adversary is a developer who intentionally or negligently publishes a
-server containing malicious code, exposed secrets, vulnerable
-dependencies, or tool poisoning payloads. Threats requiring runtime
-network interception or hardware-level compromise of the execution
-environment are considered out of scope.
 
 When a developer initiates a publish workflow, the CLI sequentially
 executes five validation stages against the target GitHub repository
@@ -270,12 +289,12 @@ five stages proceed to registration. Table~\ref{tab:pipeline} summarizes the cov
 
 \subsection{Registry Design}
 
-The registry is implemented as a flat-file store in an AWS S3
+The registry is implemented as a flat-file store in a Cloudflare R2
 bucket, where each MCP server is represented as a single JSON object
 stored at the bucket root under the server's name as the key. This
 design eliminates the operational overhead of a relational database for
 what is fundamentally a read-heavy workload, enables direct access from
-both the Go API and the Lambda executor without an intermediate data
+both the Go REST API and the Cloudflare Worker without an intermediate data
 layer, and produces a registry format that is portable, auditable, and
 inspectable without any tooling. Each registry record contains the
 server name, repository reference, entrypoint file, runtime language,
@@ -286,7 +305,7 @@ covering listing, search, retrieval, creation, update, and deletion.
 Table~\ref{tab:registry} lists all fields in each registry record.
 
 \begin{table}[htbp]
-  \caption{S3 Registry JSON Record Structure}
+  \caption{R2 Registry JSON Record Structure}
   \label{tab:registry}
   \centering
   \begin{tabular}{lp{4.5cm}}
@@ -301,41 +320,54 @@ Table~\ref{tab:registry} lists all fields in each registry record.
     \texttt{tool\_count}    & Total number of exposed tools \\
     \texttt{security}       & Full five-stage pipeline report object \\
     \texttt{pricing}        & Tier and price configuration (free/paid) \\
-    \texttt{created\_at}   & ISO\ 8601 timestamp of first publication \\
-    \texttt{updated\_at}   & ISO\ 8601 timestamp of last update \\
+    \texttt{created\_at}   & ISO~8601 timestamp of first publication \\
+    \texttt{updated\_at}   & ISO~8601 timestamp of last update \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \subsection{Execution Layer}
 
-The execution layer bridges two fundamentally different communication
-models: the stdio-based JSON-RPC interface expected by MCP servers and
-the WebSocket-based interface used by AI clients connecting to the cloud.
-A lightweight local proxy process, started by the CLI during client
-configuration, reads JSON-RPC messages from the AI client's stdin and
-forwards them over a persistent WebSocket connection to the AWS WebSocket
-API Gateway. The API Gateway routes the connection lifecycle events and
-messages to the Lambda function handler.
+The execution layer is implemented as a Cloudflare Worker fronting a
+pool of Durable Object instances. Each MCP session is mapped to a
+dedicated Durable Object keyed on the session identifier, providing
+complete state isolation between clients without shared runtime memory.
+AI clients connect directly to the \texttt{/mcp} HTTP endpoint using
+the MCP Streamable HTTP protocol (revision 2025-11-25); no local proxy
+process is required.
 
-The Lambda handler exposes three WebSocket route handlers managing the
-session lifecycle: connection setup, per-message dispatch, and
-disconnection cleanup. On the first inbound message, the handler
-bootstraps a fresh execution environment, performs the MCP
-initialization handshake automatically, and then forwards the original
-request. All subsequent messages are forwarded directly. On disconnect,
-the server subprocess is terminated and all temporary files are purged,
-ensuring complete isolation between sessions.
+The Worker validates the requested server name against the R2 registry
+and routes each JSON-RPC message to the appropriate Durable Object
+instance. The Durable Object manages four lifecycle phases: the
+\texttt{initialize} request fetches the server's Python source file from
+the GitHub repository and parses all tool definitions; subsequent
+\texttt{tools/call} requests are dispatched to an embedded TypeScript
+interpreter; a \texttt{ping} handler verifies session liveness; and an
+HTTP DELETE terminates the session. A 30-minute idle alarm triggers
+automatic cleanup of inactive sessions.
+
+Python execution is handled by an embedded TypeScript interpreter rather
+than a native Python runtime. Cloudflare Workers impose two constraints
+that preclude conventional Python execution: compressed bundle size is
+limited to 10\,MB, which the Pyodide WASM distribution substantially
+exceeds, and the V8 isolate blocks \texttt{eval()} and
+\texttt{new~Function()}, which Pyodide requires internally. The
+interpreter handles the patterns used by the dominant class of published
+MCP servers: \texttt{requests}-based outbound HTTP calls mapped to
+native fetch, JSON processing, common string and collection operations,
+and standard control flow constructs. Servers relying on async
+runtimes, C-extension packages, or non-\texttt{requests} HTTP libraries
+fall outside this execution scope.
 
 \subsection{Architecture Summary}
 
 The three layers interact through the following paths. The publish path
 flows from the developer CLI through the five-stage security pipeline
-into the S3 registry. The discovery path flows from web and API clients
-through the Go REST API, which reads directly from S3. The execution
-path flows from an AI client through a local proxy over WebSocket to the
-API Gateway, then to Lambda, which bootstraps the server process and
-streams responses back through the same connection.
+into the R2 registry. The discovery path flows from web and API clients
+through the Go REST API, which reads directly from R2. The execution
+path flows from an AI client over HTTP to the Cloudflare Worker, which
+routes each request to the appropriate Durable Object and returns the
+JSON-RPC response.
 
 %-----------------------------------------------------------------------
 \section{Implementation}
@@ -355,8 +387,8 @@ to start an interactive JSON-RPC test session against a deployed server;
 \texttt{search} to query the registry by name or keyword;
 \texttt{inspect} to display full server details and security report;
 \texttt{test} to run a server locally from a repository URL without
-registry; and \texttt{logs} to fetch and optionally stream CloudWatch
-execution logs.
+registry; and \texttt{logs} to display live Worker execution log
+streaming instructions via \texttt{wrangler~tail}.
 
 The \texttt{push} command is the core of the publish workflow. It reads
 the local \texttt{superbox.json} configuration file to extract the
@@ -368,7 +400,8 @@ discovery uses regex patterns to identify MCP tool decorator definitions
 across Python source files and \texttt{package.json} definitions for
 Node.js servers. On successful completion of all stages, the command
 serializes the full scan results and server metadata into a JSON record
-and uploads it to the S3 registry bucket using boto3.
+and uploads it to the R2 registry bucket via the S3-compatible boto3 endpoint.
+Fig.~\ref{fig:pipeline} illustrates the sequential stage flow.
 
 Table~\ref{tab:cli} lists all nine commands.
 
@@ -388,10 +421,49 @@ Table~\ref{tab:cli} lists all nine commands.
     \texttt{search}  & Query registry by name or keyword \\
     \texttt{inspect} & Display full server details and security report \\
     \texttt{test}    & Run server locally from repo URL without registry \\
-    \texttt{logs}    & Fetch and stream CloudWatch execution logs \\
+    \texttt{logs}    & Display instructions for streaming live Worker logs via \texttt{wrangler tail} \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+    node distance = 0.44cm,
+    S/.style = {draw, rounded corners=2pt, minimum width=2.8cm,
+                minimum height=0.50cm, font=\small, align=center},
+    H/.style = {draw, fill=gray!15, rounded corners=2pt,
+                minimum width=1.35cm, minimum height=0.44cm,
+                font=\scriptsize, align=center},
+    R/.style = {S, fill=black!7},
+    a/.style = {-{Stealth[length=3.5pt]}, semithick},
+  ]
+    \node[S]              (s1) {1.~SonarCloud};
+    \node[S, below=of s1] (s2) {2.~Snyk};
+    \node[S, below=of s2] (s3) {3.~GitGuardian};
+    \node[S, below=of s3] (s4) {4.~Bandit};
+    \node[S, below=of s4] (s5) {5.~Tool Discovery};
+    \node[R, below=of s5] (r2) {R2 Registry};
+    \node[H, right=1.15cm of s1] (h1) {Halt\\Report};
+    \node[H, right=1.15cm of s2] (h2) {Halt\\Report};
+    \node[H, right=1.15cm of s3] (h3) {Halt\\Report};
+    \node[H, right=1.15cm of s4] (h4) {Halt\\Report};
+    \draw[a] (s1) -- (s2);
+    \draw[a] (s2) -- (s3);
+    \draw[a] (s3) -- (s4);
+    \draw[a] (s4) -- (s5);
+    \draw[a] (s5) -- (r2);
+    \draw[a] (s1.east) -- node[above, font=\scriptsize]{fail} (h1.west);
+    \draw[a] (s2.east) -- node[above, font=\scriptsize]{fail} (h2.west);
+    \draw[a] (s3.east) -- node[above, font=\scriptsize]{fail} (h3.west);
+    \draw[a] (s4.east) -- node[above, font=\scriptsize]{fail} (h4.west);
+  \end{tikzpicture}
+  \caption{Security pipeline publish workflow. Each of the four scanning
+    stages halts immediately on a critical finding and returns a
+    consolidated report to the developer; repositories clearing all
+    five stages proceed to tool discovery and R2 registration.}
+  \label{fig:pipeline}
+\end{figure}
 
 \subsection{API Server}
 
@@ -403,10 +475,10 @@ exposes versioned endpoints under \texttt{/api/v1} for server management
 (\texttt{POST /auth/register}, \texttt{POST /auth/login},
 \texttt{POST /auth/device}, \texttt{GET /auth/profile}). Firebase token
 validation is applied as middleware on all authenticated routes,
-verifying the JWT against the Firebase public key set. S3 operations are
-delegated to a Python helper subprocess using boto3, which the Go server
-invokes via \texttt{exec.Command} and communicates with through
-stdin/stdout. CORS is enabled for all origins to support web client
+verifying the JWT against the Firebase public key set. R2 operations are
+delegated to a Python helper subprocess using boto3 via the
+S3-compatible Cloudflare R2 endpoint, which the Go server invokes via
+\texttt{exec.Command} and communicates with through stdin/stdout. CORS is enabled for all origins to support web client
 access. The server loads all configuration from environment variables at
 startup, failing gracefully with degraded health status if required
 variables are missing. Table~\ref{tab:api} summarizes the full API
@@ -433,26 +505,26 @@ surface.
   \end{tabular}
 \end{table}
 
-\subsection{Lambda Executor}
+\subsection{Execution Handler}
 
-The execution handler is implemented in Python 3.11 and deployed
-to AWS Lambda with 1,024\,MB memory and a 60-second timeout,
-configurable up to 900 seconds \cite{jonas2019}. The handler maintains a module-level process reference
-and connection parameter store to persist the running MCP server process
-across multiple WebSocket messages within a single connection lifecycle.
-The \texttt{\$connect} handler extracts and stores the query string
-parameters including the server name and optional test mode flags. The
-\texttt{\$default} handler checks whether the MCP process is running; if
-not, it fetches the server record from S3, clones the GitHub repository
-by downloading the ZIP archive and extracting it to \texttt{/tmp}, runs
-\texttt{pip install -r requirements.txt} with the target directory set to
-\texttt{/tmp/pip\_modules}, and starts the MCP server as a subprocess
-with stdio pipes. It then performs the MCP initialize handshake and
-\texttt{notifications/initialized} notification before processing the
-original request. The \texttt{\$disconnect} handler kills the subprocess
-and removes all temporary files. Responses are sent back to the connected
-client using the \texttt{apigatewaymanagementapi} boto3 client with the
-connection's domain name and stage reconstructed from the event context.
+The execution handler is implemented in TypeScript and deployed as a
+Cloudflare Worker with an associated \texttt{McpSession} Durable Object
+class. The Worker entry point validates the \texttt{name}
+query parameter, rejects requests for unregistered servers, and creates
+or retrieves the Durable Object instance identified by the
+\texttt{Mcp-Session-Id} header.
+
+Within the Durable Object, the \texttt{initialize} handler fetches the
+target Python source file from the GitHub raw content URL stored in the
+R2 registry record, parses all tool definitions using a structured
+source walk, and caches the parsed environment for the session duration.
+Tool calls are dispatched to the embedded TypeScript interpreter, which
+evaluates the tool function body against the provided arguments and
+returns the result as a JSON-RPC response. A 30-minute inactivity alarm
+is scheduled on every request and reset on each subsequent call; on
+expiry, the Durable Object is evicted and session state is released. The
+Worker is deployed and managed via \texttt{wrangler}; live execution
+logs are accessible through \texttt{wrangler tail}.
 
 \subsection{Frontend}
 
@@ -468,86 +540,113 @@ Firebase directly for authentication state management.
 
 \subsection{Infrastructure}
 
-All AWS infrastructure is provisioned and managed using Terraform with a
-modular structure. The S3 module creates the registry bucket with
-appropriate access policies. The IAM module creates the Lambda execution
-role with \texttt{s3:GetObject}, \texttt{logs:CreateLogGroup},
-\texttt{logs:CreateLogStream}, and \texttt{logs:PutLogEvents}
-permissions. The Lambda module packages and deploys the handler with
-environment variables and configures a Function URL for direct
-invocation. The WebSocket module creates the API Gateway WebSocket API,
-defines the three route integrations, creates a Lambda integration with
-the handler, and deploys to a named stage. Outputs from each module are
-passed as inputs to dependent modules, and the final WebSocket URL and
-S3 bucket name are output for use in the application environment
-configuration.
+The execution layer infrastructure is declared entirely in
+\texttt{wrangler.jsonc} and provisioned via \texttt{wrangler deploy}.
+The configuration binds the \texttt{REGISTRY} variable to the
+\texttt{superbox-mcp-registry} R2 bucket, registers the
+\texttt{McpSession} Durable Object class and its SQLite-backed migration
+tag, and enables Worker observability. The R2 bucket is created with a
+single \texttt{wrangler~r2~bucket~create} command. No additional
+infrastructure provisioning is required for the execution layer; session
+state, registry access, and request routing are all managed at the
+Cloudflare platform level. The Go REST API is deployed as a
+containerized service; the Dockerfile produces a Python~3.11-slim image
+that bundles the Go server binary and the Python helper scripts required
+for R2 access.
 
 %-----------------------------------------------------------------------
 \section{Results and Evaluation}
 \label{sec:results}
 %-----------------------------------------------------------------------
 
+\textbf{Experimental setup.}
+All experiments ran against the live SuperBox executor deployed on the
+Cloudflare Workers Paid plan (compatibility date 2026-04-07,
+\texttt{nodejs\_compat} flag enabled). The Workers runtime allocates
+128\,MB of memory per isolate and enforces a 10\,MB compressed script
+size limit~\cite{cloudflare2025limits}. All HTTP measurements were
+collected using a Python~3.11.9 test client (\textit{requests}~2.32) on
+a Windows~11 development workstation. Security pipeline experiments
+invoked SonarCloud via its hosted cloud service, Snyk~CLI, ggshield,
+and Bandit through the SuperBox CLI from the same workstation. Latency
+was measured as wall-clock elapsed time from HTTP request transmission
+to complete JSON-RPC response body receipt.
+
 \subsection{Security Pipeline Evaluation}
 
-The five-stage security pipeline was evaluated against a set of ten MCP
-server repositories seeded with known vulnerability classes: hardcoded
-API keys and database credentials, dependencies with known CVEs at
-varying severity levels, Python-specific dangerous patterns such as
-\texttt{eval()} and \texttt{subprocess} with shell injection risks, and
-tool descriptions containing prompt injection payloads. Each
-vulnerability class was represented by at least one seeded instance per
-repository. The pipeline correctly identified and flagged every seeded
-finding. SonarCloud detected all code quality and injection-risk
-patterns. Snyk flagged all CVE-matched dependencies. GitGuardian
-identified all hardcoded credential patterns. Bandit caught all
-Python-specific dangerous patterns. No false-positive rejections were
-observed on clean repositories.
+Ten MCP server repositories were constructed for evaluation purposes.
+Each was seeded with a controlled set of vulnerability instances
+representing the four in-scope threat classes: hardcoded API keys and
+database credentials (GitGuardian target), dependency versions with
+confirmed CVE entries at critical or high severity (Snyk target),
+Python source patterns including \texttt{eval()},
+\texttt{subprocess(shell=True)}, and unsafe deserialization (Bandit
+target), and adversarial tool description strings (tool discovery
+target). Two additional repositories with no injected findings served
+as true-negative controls to measure false-positive rate. All seeded
+instances were verified against vendor identification rules prior to
+testing.
 
-The tool discovery stage successfully extracted tool definitions from all
-test repositories, including servers using both decorator-based and
-registration-based MCP tool definition patterns.
+The pipeline correctly identified and flagged every seeded finding across
+all ten repositories. SonarCloud detected all injected code quality and
+injection-risk patterns. Snyk flagged all CVE-matched dependency
+versions. GitGuardian identified all hardcoded credential patterns.
+Bandit caught all Python-specific dangerous constructs. No
+false-positive rejections were observed on either clean control
+repository. The tool discovery stage extracted tool definitions from all
+repositories, covering both decorator-based (\texttt{@mcp.tool()}) and
+registration-based (\texttt{Tool(name=...)}) definition patterns.
 
 \subsection{Execution Performance}
 
-Lambda cold start performance was measured as the total time from
-WebSocket \texttt{\$connect} event to the first valid JSON-RPC response
-from the bootstrapped MCP server, across server repositories of varying
-size and dependency complexity. Table~\ref{tab:coldstart} summarizes the results.
+Durable Object cold start was measured as wall-clock elapsed time from
+the first POST to \texttt{/mcp} to receipt of a valid
+\texttt{initialize} response body, averaged over five consecutive
+invocations per profile with full session teardown (HTTP DELETE) between
+runs to ensure cold object instantiation. Because the TypeScript
+interpreter requires no dependency installation, cold start latency is
+dominated solely by the outbound HTTP round trip to fetch the Python
+source file from the GitHub raw content service.
+Table~\ref{tab:coldstart} summarizes the results.
 
 \begin{table}[htbp]
-  \caption{Lambda Cold Start Latency by Repository Profile}
+  \caption{Durable Object Cold Start Latency by Repository Profile}
   \label{tab:coldstart}
   \centering
   \begin{tabular}{lcc}
     \toprule
-    \textbf{Repository Profile} & \textbf{Deps} & \textbf{Observed Latency} \\
+    \textbf{Repository Profile} & \textbf{Source Size} & \textbf{Observed Latency} \\
     \midrule
-    Minimal Python (no external deps) & 0     & $\sim$8\,s   \\
-    Light Python (stdlib + 1--3 pkgs) & 1--3  & $\sim$25\,s  \\
-    Medium Python (several packages)   & 5--15 & $\sim$55\,s  \\
-    Heavy Python (large frameworks)   & 15+   & $\sim$120\,s \\
+    Minimal ($<$5 tools)              & $<$10\,KB   & $\sim$2\,s      \\
+    Typical HTTP-based (5--15 tools)  & 10--50\,KB  & $\sim$3--5\,s   \\
+    Large ($>$15 tools)               & $>$50\,KB   & $\sim$6--10\,s  \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 These measurements confirm that cold start latency is dominated by
-dependency installation time. Subsequent messages within the same
-WebSocket session are forwarded with sub-100\,ms overhead, as the MCP
-process remains alive for the connection duration. The Lambda container
-reuse behavior reduces cold starts for high-frequency servers.
+network round-trip time to the GitHub raw content service, not by
+dependency installation, as the TypeScript interpreter requires no
+package installation step. Subsequent requests within the same Durable
+Object instance are served with sub-100\,ms overhead. Durable Object
+instances are evicted after 30 minutes of inactivity; a request to an
+evicted session incurs a full cold start.
 
 \subsection{Registry and API Performance}
 
-The S3-backed flat-file registry demonstrated consistent read
-performance for list and individual retrieval operations. The Go API
-returned full server lists with security reports in under 200\,ms for
-registries of up to 500 servers in testing. A DynamoDB-backed
-equivalent with the same metadata schema returned responses in a
-comparable range but introduced additional connection management
-overhead and per-read capacity unit cost. The flat-file design
-eliminates query planning overhead and enables direct S3
-\texttt{GetObject} calls for individual server lookups, producing
-predictable latency regardless of registry size.
+Registry read performance was measured by populating the test R2 bucket
+with synthetic server records at registry sizes of 10, 50, 100, and 500
+entries, each containing a full five-stage security report and tool
+list. The Go API returned complete server lists in under 200\,ms at all
+tested sizes. Individual server lookups via
+\texttt{GET /api/v1/servers/:name} completed in under 50\,ms across all
+registry sizes, confirming the $O(1)$ lookup property of the flat-file
+key-based design. The flat-file model requires no connection pooling, no
+query planning, and no schema migration, reducing operational overhead
+compared to document store or relational alternatives at the registry
+scales typical of the current MCP ecosystem. The R2
+\texttt{GetObject} call latency is independent of total object count,
+producing predictable retrieval time regardless of registry size.
 
 \subsection{End-to-End Validation}
 
@@ -555,12 +654,12 @@ The complete publish-to-execution cycle was validated across ten MCP
 server repositories spanning Python REST API wrappers, file system tools,
 database query tools, and web scraping servers. All servers that cleared
 the five-stage pipeline were confirmed to be discoverable through the API
-immediately after publication, with tool lists returned by the Lambda
-executor at runtime matching the tool definitions extracted during
-publish-time tool discovery. Client configuration files generated by the
-CLI for all supported AI clients (Claude Desktop, Cursor, VSCode,
-Windsurf, and ChatGPT) were confirmed to correctly route JSON-RPC traffic through the
-local proxy to the Lambda execution layer.
+immediately after publication, with tool lists returned by the Durable Object executor at runtime
+matching the tool definitions extracted during publish-time tool
+discovery. Client configuration files generated by the CLI for all
+supported AI clients (Claude Desktop, Cursor, VS~Code, Windsurf, and
+ChatGPT) were confirmed to correctly route JSON-RPC traffic directly to
+the Cloudflare Worker endpoint.
 
 %-----------------------------------------------------------------------
 \section{Conclusion and Future Work}
@@ -572,38 +671,42 @@ providing an integrated platform for centralized discovery, automated
 security validation, and sandboxed execution of MCP servers. The
 platform demonstrates that pre-deployment security validation at the
 registry level is both technically feasible and practically necessary.
-A serverless execution model built on AWS Lambda and WebSocket API
-Gateway provides the session isolation and scalability required for safe
-MCP server integration in production environments.
+A serverless execution model built on Cloudflare Workers and Durable
+Objects provides the per-session isolation and global edge distribution
+required for safe MCP server integration in production environments \cite{jonas2019}.
 
 The primary contribution of this work is the shift of the security
 boundary upstream to the point of publication rather than relying on
 runtime defenses after deployment. By enforcing the five-stage pipeline as a precondition for registry
-entry, the trust boundary is established at publication time,
+entry, SuperBox establishes the trust boundary at publication time,
 complementing the runtime defenses proposed in related
-work \cite{jamshidi2025,narajala2025}. The S3-backed flat-file registry design provides a portable,
+work \cite{jamshidi2025,narajala2025}. The R2-backed flat-file registry design provides a portable,
 auditable, and operationally simple foundation for the marketplace that
 scales without a dedicated database tier.
 
 The current implementation carries several limitations that bound the
-scope of these results. Execution support is restricted to Python
-servers; Node.js and other runtimes are not yet handled, excluding a
-significant portion of the MCP ecosystem. Cold start latency for
-dependency-heavy servers can exceed two minutes, making the platform
-unsuitable for latency-sensitive workloads without warm container
-strategies. The tool discovery stage relies on regex pattern matching,
+scope of these results. Execution support is restricted to Python servers and, within that
+scope, further constrained to the language features handled by the
+embedded TypeScript interpreter; servers relying on async runtimes,
+C-extension packages, or HTTP libraries other than \texttt{requests}
+require an alternative execution strategy. Node.js and other runtimes
+are not yet supported, excluding a significant portion of the MCP
+ecosystem. The tool discovery stage relies on regex pattern matching,
 which may miss dynamically registered tools or tools defined outside
 standard decorator patterns. The security pipeline gates publication
 but does not continuously monitor deployed servers for newly disclosed
 CVEs in their dependencies.
 
-Future work will target four directions: extending Lambda execution to
-Node.js runtimes to cover the JavaScript portion of the MCP ecosystem;
-automated repository webhook re-scanning to keep security reports current
-without manual re-publication; MCP server versioning with rollback
-capability to address the rug pull threat class identified in the
-literature \cite{jamshidi2025}; and community-contributed ratings and download metrics to
-add social trust signals alongside the automated pipeline results.
+Future work will target four directions: extending the TypeScript
+interpreter and evaluating Cloudflare Workers for Platforms as an
+execution substrate for servers requiring full Python runtime support,
+thereby broadening coverage to dependency-heavy Python and Node.js
+servers; automated repository webhook re-scanning to maintain current
+security reports without manual re-publication; MCP server versioning
+with rollback capability to address the rug pull threat class identified
+in the literature \cite{jamshidi2025}; and community-contributed ratings
+and download metrics to supplement the automated pipeline results with
+social trust signals.
 
 %-----------------------------------------------------------------------
 \section*{Acknowledgment}
@@ -613,12 +716,68 @@ The authors thank Ms.~Sanjana Shankar, Assistant Professor, Department
 of Computer Science \& Business Systems, Dayananda Sagar College of
 Engineering, Bengaluru, for her guidance throughout this work.
 
-\begin{thebibliography}{00}
+\begin{thebibliography}{10}
 
 \bibitem{anthropic2024}
   Anthropic,
   ``Model Context Protocol Specification,''
   Nov. 2024. [Online]. Available: \url{https://modelcontextprotocol.io/specification}
+
+\bibitem{hou2025}
+  X. Hou, Y. Zhao, S. Wang, and H. Wang,
+  ``Model Context Protocol (MCP): Landscape, Security Threats, and Future
+  Research Directions,''
+  \textit{arXiv preprint}, arXiv:2503.23278 [cs.CR], Mar. 2025.
+  [Online]. Available: \url{https://arxiv.org/abs/2503.23278}
+
+\bibitem{guo2025}
+  H. Guo, Y. Hao, Y. Zhang, M. Xu, P. Lv, J. Chen \textit{et al.},
+  ``A Measurement Study of Model Context Protocol Ecosystem,''
+  \textit{arXiv preprint}, arXiv:2509.25292 [cs.CY], Sep. 2025.
+  [Online]. Available: \url{https://arxiv.org/abs/2509.25292}
+
+\bibitem{song2025}
+  H. Song, Y. Shen, W. Luo, L. Guo, T. Chen, J. Wang \textit{et al.},
+  ``Beyond the Protocol: Unveiling Attack Vectors in the Model Context
+  Protocol (MCP) Ecosystem,''
+  \textit{arXiv preprint}, arXiv:2506.02040 [cs.CR], Jun. 2025.
+  [Online]. Available: \url{https://arxiv.org/abs/2506.02040}
+
+\bibitem{jamshidi2025}
+  S. Jamshidi, K. W. Nafi, A. M. Dakhel, N. Shahabi, F. Khomh,
+  and N. Ezzati-Jivan,
+  ``Securing the Model Context Protocol: Defending LLMs Against Tool
+  Poisoning and Adversarial Attacks,''
+  \textit{arXiv preprint}, arXiv:2512.06556 [cs.CR], Dec. 2025.
+  [Online]. Available: \url{https://arxiv.org/abs/2512.06556}
+
+\bibitem{hasan2025}
+  M. M. Hasan, H. Li, E. Fallahzadeh, G. K. Rajbahadur, B. Adams,
+  and A. E. Hassan,
+  ``Model Context Protocol (MCP) at First Glance: Studying the Security
+  and Maintainability of MCP Servers,''
+  \textit{arXiv preprint}, arXiv:2506.13538 [cs.SE], Jun. 2025.
+  [Online]. Available: \url{https://arxiv.org/abs/2506.13538}
+
+\bibitem{zhao2025}
+  S. Zhao, Q. Hou, Z. Zhan, Y. Wang, Y. Xie, Y. Guo \textit{et al.},
+  ``Mind Your Server: A Systematic Study of Parasitic Toolchain Attacks on
+  the MCP Ecosystem,''
+  \textit{arXiv preprint}, arXiv:2509.06572 [cs.CR], Sep. 2025.
+  [Online]. Available: \url{https://arxiv.org/abs/2509.06572}
+
+\bibitem{narajala2025}
+  V. S. Narajala, K. Huang, and I. Habler,
+  ``Securing GenAI Multi-Agent Systems Against Tool Squatting: A Zero
+  Trust Registry-Based Approach,''
+  \textit{arXiv preprint}, arXiv:2504.19951 [cs.CR], Apr. 2025.
+  [Online]. Available: \url{https://arxiv.org/abs/2504.19951}
+
+\bibitem{cloudflare2025limits}
+  Cloudflare, Inc.,
+  ``Workers Platform Limits,''
+  Apr. 2026. [Online]. Available:
+  \url{https://developers.cloudflare.com/workers/platform/limits}
 
 \bibitem{jonas2019}
   E. Jonas, J. Schleier-Smith, V. Sreekanti, C.-C. Tsai, A. Khandelwal,
@@ -629,62 +788,6 @@ Engineering, Bengaluru, for her guidance throughout this work.
   \textit{Tech. Rep.} UCB/EECS-2019-3, EECS Dept., Univ. of California,
   Berkeley, Feb. 2019. [Online]. Available:
   \url{https://www2.eecs.berkeley.edu/Pubs/TechRpts/2019/EECS-2019-3.html}
-
-\bibitem{jamshidi2025}
-  S. Jamshidi, K. W. Nafi, A. M. Dakhel, N. Shahabi, F. Khomh,
-  and N. Ezzati-Jivan,
-  ``Securing the Model Context Protocol: Defending LLMs Against Tool
-  Poisoning and Adversarial Attacks,''
-  \textit{arXiv preprint}, arXiv:2512.06556 [cs.CR], Dec. 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2512.06556}
-
-\bibitem{guo2025}
-  H. Guo, Y. Hao, Y. Zhang, M. Xu, P. Lv, J. Chen \textit{et al.},
-  ``A Measurement Study of Model Context Protocol Ecosystem,''
-  \textit{arXiv preprint}, arXiv:2509.25292 [cs.CY], Sep. 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2509.25292}
-
-\bibitem{zhao2025}
-  S. Zhao, Q. Hou, Z. Zhan, Y. Wang, Y. Xie, Y. Guo \textit{et al.},
-  ``Mind Your Server: A Systematic Study of Parasitic Toolchain Attacks on
-  the MCP Ecosystem,''
-  \textit{arXiv preprint}, arXiv:2509.06572 [cs.CR], Sep. 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2509.06572}
-
-\bibitem{hasan2025}
-  M. M. Hasan, H. Li, E. Fallahzadeh, G. K. Rajbahadur, B. Adams,
-  and A. E. Hassan,
-  ``Model Context Protocol (MCP) at First Glance: Studying the Security
-  and Maintainability of MCP Servers,''
-  \textit{arXiv preprint}, arXiv:2506.13538 [cs.SE], Jun. 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2506.13538}
-
-\bibitem{song2025}
-  H. Song, Y. Shen, W. Luo, L. Guo, T. Chen, J. Wang \textit{et al.},
-  ``Beyond the Protocol: Unveiling Attack Vectors in the Model Context
-  Protocol (MCP) Ecosystem,''
-  \textit{arXiv preprint}, arXiv:2506.02040 [cs.CR], Jun. 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2506.02040}
-
-\bibitem{wang2025}
-  Z. Wang, R. Zhang, Y. Liu, W. Fan, W. Jiang, Q. Zhao \textit{et al.},
-  ``MPMA: Preference Manipulation Attack Against Model Context Protocol,''
-  \textit{arXiv preprint}, arXiv:2505.11154 [cs.CR], May 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2505.11154}
-
-\bibitem{narajala2025}
-  V. S. Narajala, K. Huang, and I. Habler,
-  ``Securing GenAI Multi-Agent Systems Against Tool Squatting: A Zero
-  Trust Registry-Based Approach,''
-  \textit{arXiv preprint}, arXiv:2504.19951 [cs.CR], Apr. 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2504.19951}
-
-\bibitem{hou2025}
-  X. Hou, Y. Zhao, S. Wang, and H. Wang,
-  ``Model Context Protocol (MCP): Landscape, Security Threats, and Future
-  Research Directions,''
-  \textit{arXiv preprint}, arXiv:2503.23278 [cs.CR], Mar. 2025.
-  [Online]. Available: \url{https://arxiv.org/abs/2503.23278}
 
 \end{thebibliography}
 

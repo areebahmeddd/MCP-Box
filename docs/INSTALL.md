@@ -1,6 +1,6 @@
 # SuperBox – Installation Guide
 
-**📖 Complete Documentation:** [https://superbox.1mindlabs.org/docs](https://acm-aa28ebf6.mintlify.app)
+**📖 Complete Documentation:** [https://superbox.1mindlabs.org/docs](https://superbox.1mindlabs.org/docs)
 
 > For detailed setup guides, API references, CLI usage, examples, and troubleshooting, visit our documentation site.
 
@@ -35,8 +35,6 @@ source .venv/bin/activate
 pip install superbox
 ```
 
-This installs everything needed to run all CLI commands including `push` (security scanning via Bandit and ggshield).
-
 **From source (contributors):**
 
 ```powershell
@@ -54,22 +52,33 @@ python -m pip install -e .[dev]
 Create a `.env` in the working directory (the server loads it at startup; CLI commands expect it in the current directory). Use the following keys:
 
 ```dotenv
-# SuperBox API (required for auth/device login callbacks)
+# SuperBox API (required for CLI auth callbacks)
 SUPERBOX_API_URL=http://localhost:8000/api/v1
 
-# AWS (required for S3-backed registry and WebSocket executor)
-AWS_REGION=ap-south-1
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-S3_BUCKET_NAME=your-bucket
-WEBSOCKET_URL=wss://api-gateway.execute-api.region.amazonaws.com/production
+# Cloudflare R2 (required for registry read/write)
+CLOUDFLARE_ACCOUNT_ID=...
+CLOUDFLARE_R2_ACCESS_KEY_ID=...
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=...
+CLOUDFLARE_R2_BUCKET_NAME=superbox-mcp-registry
+CLOUDFLARE_WORKER_URL=https://superbox-executor.<your-subdomain>.workers.dev
+
+# Firebase (required for auth)
+FIREBASE_API_KEY=...
+FIREBASE_PROJECT_ID=...
+
+# OAuth (optional — enables Google/GitHub device login)
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
 
 # Scanners (required for `superbox push`)
 SONAR_TOKEN=...
 SONAR_ORGANIZATION=...
+SNYK_API_TOKEN=...
 GITGUARDIAN_API_KEY=...
 
-# Payments (required)
+# Payments (required for server)
 RAZORPAY_KEY_ID=...
 RAZORPAY_KEY_SECRET=...
 ```
@@ -135,7 +144,7 @@ Available tags:
 
 ### Via Docker Compose (recommended for local development)
 
-From the `backend/` directory:
+From the repo root:
 
 ```bash
 # Build and start
@@ -155,7 +164,7 @@ The server will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000). 
 
 ## 7) Use the CLI
 
-> **📖 For complete CLI usage, examples, and command references:** [https://superbox.1mindlabs.org/docs/cli](https://acm-aa28ebf6.mintlify.app/cli)
+> **📖 For complete CLI usage, examples, and command references:** [https://superbox.1mindlabs.org/docs/cli](https://superbox.1mindlabs.org/docs/cli)
 
 **Quick verification:**
 
@@ -163,14 +172,14 @@ The server will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000). 
 superbox --help
 ```
 
-All CLI commands, options, and detailed examples are available in our [CLI documentation](https://acm-aa28ebf6.mintlify.app/cli/introduction).
+All CLI commands, options, and detailed examples are available in our [CLI documentation](https://superbox.1mindlabs.org/docs/cli/introduction).
 
 ## 8) Troubleshooting
 
 - Missing env: ensure `.env` is present with the variables above.
-- AWS permissions: verify bucket exists and IAM creds allow GetObject/PutObject for the bucket.
+- Cloudflare R2: verify the bucket exists (`wrangler r2 bucket list`) and the R2 API token has Object Read & Write permissions on the bucket.
 - Sonar scanner: requires `sonar-scanner` on PATH; set `SONAR_TOKEN` and `SONAR_ORGANIZATION`.
-- ggshield/Bandit: bundled with `pip install superbox` — no separate install needed.
+- ggshield/Bandit/Snyk: bundled with `pip install superbox` — no separate install needed.
 
 ## 9) Run the test suite
 
