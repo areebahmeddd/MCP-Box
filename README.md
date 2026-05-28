@@ -28,7 +28,7 @@ ___ _   _ _ __   ___ _ __| |__   _____  __  __ _ _
 
 **SuperBox** (inspired by [Docker Hub](https://hub.docker.com)) helps you discover, deploy, and test MCPs in isolated sandboxes ( [Demo Video]() ). It includes:
 
-- A Python (Click) CLI to initialize metadata, run security scans, push to a registry (R2), search, and configure popular AI clients (VS Code, Cursor, Windsurf, Claude, ChatGPT)
+- A Python (Click) CLI to initialize metadata, run security scans, push to a registry (R2), search, and configure popular AI clients (VS Code, Cursor, Antigravity, Claude, ChatGPT)
 - A Golang (Gin) backend to list/get/create MCP servers with optional pricing and security reports
 - A Cloudflare Worker + Durable Object executor that runs MCP servers on demand directly from their Git repositories using a lightweight TypeScript interpreter (Cloudflare Workers blocks `eval()` and exceeds the WASM bundle size limit, making Pyodide unusable)
 

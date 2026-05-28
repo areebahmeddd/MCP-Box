@@ -131,7 +131,7 @@ class TestTestCommand:
         cfg = json.loads(config_file.read_text())
         assert cfg["servers"]["my-tool-test"]["url"] == "old"
 
-    @pytest.mark.parametrize("client", ["windsurf", "claude", "chatgpt"])
+    @pytest.mark.parametrize("client", ["antigravity", "claude", "chatgpt"])
     def test_other_clients_write_mcp_servers_section(self, client: str, tmp_path: Path) -> None:
         runner = CliRunner()
         config_file = tmp_path / "mcp.json"

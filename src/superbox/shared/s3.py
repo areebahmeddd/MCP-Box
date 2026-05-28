@@ -10,8 +10,6 @@ from superbox.shared.config import Config
 def s3_client() -> Any:
     """Create and return an S3-compatible client pointed at Cloudflare R2."""
     cfg = Config()
-    # R2 exposes an S3-compatible API at:
-    #   https://<account-id>.r2.cloudflarestorage.com
     endpoint_url = f"https://{cfg.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
     return boto3.client(
         "s3",

@@ -163,15 +163,8 @@ def config_path(app: str) -> Path:
         if system == "Darwin" or system == "Linux":
             return Path.home() / ".cursor" / "mcp.json"
 
-    if app == "windsurf":
-        if system == "Windows":
-            return Path(os.getenv("APPDATA")) / "Windsurf" / "User" / "mcp.json"
-        if system == "Darwin":
-            return (
-                Path.home() / "Library" / "Application Support" / "Windsurf" / "User" / "mcp.json"
-            )
-        if system == "Linux":
-            return Path.home() / ".config" / "Windsurf" / "User" / "mcp.json"
+    if app == "antigravity":
+        return Path.home() / ".gemini" / "antigravity" / "mcp_config.json"
 
     if app == "claude":
         if system == "Windows":
