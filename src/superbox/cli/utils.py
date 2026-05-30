@@ -2,7 +2,7 @@ import os
 import platform
 from pathlib import Path
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 import click
 
@@ -10,11 +10,11 @@ import click
 def build_report(
     repo_name: str,
     repo_url: str,
-    sonarqube_data: Dict[str, Any],
-    snyk_result: Dict[str, Any],
-    ggshield_result: Dict[str, Any],
-    bandit_result: Dict[str, Any],
-) -> Dict[str, Any]:
+    sonarqube_data: dict[str, Any],
+    snyk_result: dict[str, Any],
+    ggshield_result: dict[str, Any],
+    bandit_result: dict[str, Any],
+) -> dict[str, Any]:
     """Create a unified security report combining all scanner results"""
     unified_report = {
         "metadata": {
@@ -118,7 +118,7 @@ def build_report(
     return unified_report
 
 
-def show_summary(security_report: Dict[str, Any]) -> None:
+def show_summary(security_report: dict[str, Any]) -> None:
     """Print a summary of the security report."""
     total_issues = security_report["summary"]["total_issues_all_scanners"]
     if total_issues == 0:

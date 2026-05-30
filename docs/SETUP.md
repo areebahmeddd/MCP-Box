@@ -7,7 +7,7 @@ Complete guide for deploying SuperBox infrastructure on Cloudflare using Wrangle
 | Component             | Resource Name           | Purpose                                              |
 | --------------------- | ----------------------- | ---------------------------------------------------- |
 | **Cloudflare Worker** | `superbox-executor`     | Entry point: CORS, routing, session management       |
-| **Durable Object**    | `McpSession`            | One per client session — runs Pyodide + MCP protocol |
+| **Durable Object**    | `McpSession`            | Per-session MCP execution via TypeScript interpreter |
 | **R2 Bucket**         | `superbox-mcp-registry` | Stores MCP server metadata as JSON files             |
 
 ## Prerequisites

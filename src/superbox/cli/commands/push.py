@@ -3,8 +3,6 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional
-
 import click
 import requests
 
@@ -18,7 +16,7 @@ AUTH_FILE = Path.home() / ".superbox" / "auth.json"
 IDENTITY_BASE_URL = "https://identitytoolkit.googleapis.com/v1"
 
 
-def _read_auth() -> Optional[dict]:
+def _read_auth() -> dict | None:
     """Load stored auth tokens from the local auth file, or return None."""
     if not AUTH_FILE.exists():
         return None

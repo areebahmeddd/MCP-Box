@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -78,7 +77,7 @@ class Config:
         return True
 
 
-def load_env(env_path: Optional[os.PathLike | str] = None) -> None:
+def load_env(env_path: os.PathLike | str | None = None) -> None:
     """Load environment variables from .env file"""
     if env_path is None:
         env_path = Path.cwd() / ".env"

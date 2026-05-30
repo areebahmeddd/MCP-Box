@@ -41,13 +41,13 @@ Why this project:
 ## Key Features
 
 - **Central MCP Registry**: R2-backed registry with per-server JSON for easy discovery and portability.
-- **Sandboxed Execution**: MCP servers run in Cloudflare Durable Objects and return responses securely. The executor supports `requests`-based HTTP tools; see `cloudflare/README.md` for the full scope.
+- **Sandboxed Execution**: MCP servers run in Cloudflare Durable Objects and return responses securely. The executor supports Python (`requests`-based) and JavaScript/TypeScript (`fetch()`-based) tools; see `cloudflare/README.md` for the full scope.
 - **Security Pipeline (5-step)**: SonarQube, Bandit, and GitGuardian checks with a unified report.
 - **One-Command Publish**: `superbox push` scans, discovers tools, and uploads a unified record to R2.
 - **Client Auto-Config**: `superbox pull --client cursor|vscode|...` writes correct MCP config pointing to the Cloudflare Worker.
 - **Terminal Runner**: `superbox run --name <server>` starts an interactive prompt against the Cloudflare executor.
 - **Live Logs**: `superbox logs --name <server>` shows instructions for streaming logs via `wrangler tail`.
-- **Tool Discovery**: Regex-based discovery across Python code and optional Node `package.json` definitions.
+- **Tool Discovery**: Regex-based discovery across Python source (`@mcp.tool` decorators) and TypeScript/JavaScript source (`server.tool` / Zod schemas), plus `package.json` metadata.
 
 ## 📚 Documentation
 
@@ -59,8 +59,8 @@ Why this project:
 
 The IEEE research paper for SuperBox is available in the [`ieee/`](ieee/) directory:
 
-- [`paper.pdf`](ieee/paper.pdf) – compiled paper
-- [`paper.tex`](ieee/paper.tex) – LaTeX source
+- [`paper.pdf`](ieee/paper.pdf) - compiled paper
+- [`paper.tex`](ieee/paper.tex) - LaTeX source
 
 ## 🗂️ Project Structure
 
@@ -98,25 +98,25 @@ The SuperBox CLI provides commands for authentication, server management, and te
 
 **Authentication:**
 
-- `superbox auth register` – Register a new account
-- `superbox auth login` – Log in (email/Google/GitHub)
-- `superbox auth logout` – Log out
-- `superbox auth status` – Check authentication status
-- `superbox auth refresh` – Refresh authentication token
+- `superbox auth register` - Register a new account
+- `superbox auth login` - Log in (email/Google/GitHub)
+- `superbox auth logout` - Log out
+- `superbox auth status` - Check authentication status
+- `superbox auth refresh` - Refresh authentication token
 
 **Server Management:**
 
-- `superbox init` – Initialize a new MCP server project
-- `superbox push` – Publish server to registry
-- `superbox pull` – Download and configure server for AI clients
-- `superbox search` – Search for servers in registry
-- `superbox inspect` – View server details and security report
-- `superbox test` – Test server directly from repository (without registry)
+- `superbox init` - Initialize a new MCP server project
+- `superbox push` - Publish server to registry
+- `superbox pull` - Download and configure server for AI clients
+- `superbox search` - Search for servers in registry
+- `superbox inspect` - View server details and security report
+- `superbox test` - Test server directly from repository (without registry)
 
 **Execution & Monitoring:**
 
-- `superbox run` – Run server in interactive mode
-- `superbox logs` – View server execution logs
+- `superbox run` - Run server in interactive mode
+- `superbox logs` - View server execution logs
 
 For detailed CLI documentation and usage examples, see:
 [https://superbox.1mindlabs.org/docs/cli](https://superbox.1mindlabs.org/docs/cli)
@@ -128,7 +128,7 @@ pip install superbox
 ```
 
 - **PyPI:** [https://pypi.org/project/superbox](https://pypi.org/project/superbox)
-- **npm:** coming soon
+- **npm:** [https://npmjs.com/package/superbox](https://npmjs.com/package/superbox)
 
 See [docs/INSTALL.md](docs/INSTALL.md) for complete installation instructions.
 

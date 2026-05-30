@@ -262,8 +262,9 @@ scans all files and commit history for hardcoded secrets, API keys,
 tokens, and credentials. Bandit performs Python-specific security
 linting, flagging dangerous function calls, insecure configurations, and
 injection-prone patterns. A regex-based tool discovery pass then
-extracts the names and signatures of all MCP tools exposed by the server
-from the source code.
+extracts the names and signatures of all MCP tools from the server
+source, covering Python decorator patterns and
+TypeScript/JavaScript registration patterns.
 
 Each stage produces a structured result object. If any stage reports a
 critical finding, the pipeline halts immediately and returns a
@@ -282,7 +283,7 @@ five stages proceed to registration. Table~\ref{tab:pipeline} summarizes the cov
     Dependency Scan  & Snyk        & Known CVEs in declared dependencies \\
     Secret Detection & GitGuardian & Hardcoded keys, tokens, credentials \\
     Python Linting   & Bandit      & Dangerous calls, injection-prone patterns \\
-    Tool Discovery   & Regex pass  & MCP tool names, signatures, decorators \\
+    Tool Discovery   & Regex pass  & MCP tool names, signatures, decorators (Python and JS/TS) \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -315,7 +316,7 @@ Table~\ref{tab:registry} lists all fields in each registry record.
     \texttt{name}           & Unique server identifier (registry key) \\
     \texttt{repo}           & GitHub repository URL \\
     \texttt{entrypoint}     & Entry file path within the repository \\
-    \texttt{language}       & Runtime language (Python, Node.js) \\
+    \texttt{language}       & Runtime language (Python, JavaScript, TypeScript) \\
     \texttt{tools}          & List of discovered MCP tool descriptors \\
     \texttt{tool\_count}    & Total number of exposed tools \\
     \texttt{security}       & Full five-stage pipeline report object \\
@@ -339,9 +340,10 @@ process is required.
 The Worker validates the requested server name against the R2 registry
 and routes each JSON-RPC message to the appropriate Durable Object
 instance. The Durable Object manages four lifecycle phases: the
-\texttt{initialize} request fetches the server's Python source file from
-the GitHub repository and parses all tool definitions; subsequent
-\texttt{tools/call} requests are dispatched to an embedded TypeScript
+\texttt{initialize} request fetches the server source file from the
+GitHub repository, selects an interpreter based on the registry
+\texttt{lang} field, and parses all tool definitions; subsequent
+\texttt{tools/call} requests are dispatched to the appropriate
 interpreter; a \texttt{ping} handler verifies session liveness; and an
 HTTP DELETE terminates the session. A 30-minute idle alarm triggers
 automatic cleanup of inactive sessions.
@@ -351,13 +353,17 @@ than a native Python runtime. Cloudflare Workers impose two constraints
 that preclude conventional Python execution: compressed bundle size is
 limited to 10\,MB, which the Pyodide WASM distribution substantially
 exceeds, and the V8 isolate blocks \texttt{eval()} and
-\texttt{new~Function()}, which Pyodide requires internally. The
-interpreter handles the patterns used by the dominant class of published
-MCP servers: \texttt{requests}-based outbound HTTP calls mapped to
-native fetch, JSON processing, common string and collection operations,
-and standard control flow constructs. Servers relying on async
-runtimes, C-extension packages, or non-\texttt{requests} HTTP libraries
-fall outside this execution scope.
+\texttt{new~Function()}, which Pyodide requires internally. The Worker also includes a JavaScript/TypeScript interpreter for
+servers written against the MCP TypeScript SDK, requiring no separate
+runtime. Two interpreter modules therefore cover the dominant patterns
+of published MCP servers: the Python interpreter handles
+\texttt{requests}-based HTTP calls, JSON processing, and standard
+control flow; the JavaScript/TypeScript interpreter handles
+\texttt{fetch()}-based HTTP calls, template literals, Zod schema
+parsing, and equivalent built-ins. The active interpreter is selected
+from the registry \texttt{lang} field, with source-level heuristics as
+a fallback. Servers relying on async runtimes, C-extension packages, or
+platform-specific APIs fall outside this execution scope.
 
 \subsection{Architecture Summary}
 
@@ -396,9 +402,11 @@ repository URL, entrypoint, and language. It verifies Firebase
 authentication by checking the stored token against the Identity Toolkit
 API. It then runs the five-stage security pipeline sequentially, cloning
 the repository to a temporary directory for local scanning stages. Tool
-discovery uses regex patterns to identify MCP tool decorator definitions
-across Python source files and \texttt{package.json} definitions for
-Node.js servers. On successful completion of all stages, the command
+discovery uses regex patterns to identify MCP tool definitions across
+three source types: Python decorator patterns (\texttt{@mcp.tool()}),
+TypeScript and JavaScript call patterns (\texttt{server.tool()} and
+\texttt{server.registerTool()}), and \texttt{package.json} definitions
+for Node.js servers. On successful completion of all stages, the command
 serializes the full scan results and server metadata into a JSON record
 and uploads it to the R2 registry bucket via the S3-compatible boto3 endpoint.
 Fig.~\ref{fig:pipeline} illustrates the sequential stage flow.
@@ -515,16 +523,19 @@ or retrieves the Durable Object instance identified by the
 \texttt{Mcp-Session-Id} header.
 
 Within the Durable Object, the \texttt{initialize} handler fetches the
-target Python source file from the GitHub raw content URL stored in the
-R2 registry record, parses all tool definitions using a structured
-source walk, and caches the parsed environment for the session duration.
-Tool calls are dispatched to the embedded TypeScript interpreter, which
-evaluates the tool function body against the provided arguments and
-returns the result as a JSON-RPC response. A 30-minute inactivity alarm
-is scheduled on every request and reset on each subsequent call; on
-expiry, the Durable Object is evicted and session state is released. The
-Worker is deployed and managed via \texttt{wrangler}; live execution
-logs are accessible through \texttt{wrangler tail}.
+server source file from the GitHub repository stored in the R2 registry
+record, selects the appropriate interpreter based on the registry
+\texttt{lang} field (with source-level heuristics as a fallback), parses
+all tool definitions, and caches the parsed environment for the session
+duration. Tool calls are dispatched to the Python interpreter for
+\texttt{requests}-based Python servers or to the JavaScript/TypeScript
+interpreter for \texttt{fetch()}-based JS/TS servers; both evaluate the
+tool function body against the provided arguments and return the result
+as a JSON-RPC response. A 30-minute inactivity alarm is scheduled on
+every request and reset on each subsequent call; on expiry, the Durable
+Object is evicted and session state is released. The Worker is deployed
+and managed via \texttt{wrangler}; live execution logs are accessible
+through \texttt{wrangler tail}.
 
 \subsection{Frontend}
 
@@ -593,9 +604,10 @@ injection-risk patterns. Snyk flagged all CVE-matched dependency
 versions. GitGuardian identified all hardcoded credential patterns.
 Bandit caught all Python-specific dangerous constructs. No
 false-positive rejections were observed on either clean control
-repository. The tool discovery stage extracted tool definitions from all
-repositories, covering both decorator-based (\texttt{@mcp.tool()}) and
-registration-based (\texttt{Tool(name=...)}) definition patterns.
+repository. The tool discovery stage confirmed coverage of both Python decorator
+patterns (\texttt{@mcp.tool()}) and JavaScript/TypeScript registration
+patterns (\texttt{server.tool()}, \texttt{server.registerTool()} with Zod
+input schemas).
 
 \subsection{Execution Performance}
 
@@ -603,10 +615,9 @@ Durable Object cold start was measured as wall-clock elapsed time from
 the first POST to \texttt{/mcp} to receipt of a valid
 \texttt{initialize} response body, averaged over five consecutive
 invocations per profile with full session teardown (HTTP DELETE) between
-runs to ensure cold object instantiation. Because the TypeScript
-interpreter requires no dependency installation, cold start latency is
-dominated solely by the outbound HTTP round trip to fetch the Python
-source file from the GitHub raw content service.
+runs to ensure cold object instantiation. Because neither interpreter requires a package installation step, cold
+start latency is dominated solely by the outbound HTTP round trip to
+fetch the server source file from the GitHub repository.
 Table~\ref{tab:coldstart} summarizes the results.
 
 \begin{table}[htbp]
@@ -625,9 +636,8 @@ Table~\ref{tab:coldstart} summarizes the results.
 \end{table}
 
 These measurements confirm that cold start latency is dominated by
-network round-trip time to the GitHub raw content service, not by
-dependency installation, as the TypeScript interpreter requires no
-package installation step. Subsequent requests within the same Durable
+network round-trip time to the GitHub repository, not by
+dependency installation, as neither interpreter requires a package installation step. Subsequent requests within the same Durable
 Object instance are served with sub-100\,ms overhead. Durable Object
 instances are evicted after 30 minutes of inactivity; a request to an
 evicted session incurs a full cold start.
@@ -685,23 +695,21 @@ auditable, and operationally simple foundation for the marketplace that
 scales without a dedicated database tier.
 
 The current implementation carries several limitations that bound the
-scope of these results. Execution support is restricted to Python servers and, within that
-scope, further constrained to the language features handled by the
-embedded TypeScript interpreter; servers relying on async runtimes,
+scope of these results. Execution support is restricted to the language features handled by
+the embedded interpreters: Python servers relying on async runtimes,
 C-extension packages, or HTTP libraries other than \texttt{requests}
-require an alternative execution strategy. Node.js and other runtimes
-are not yet supported, excluding a significant portion of the MCP
-ecosystem. The tool discovery stage relies on regex pattern matching,
+require an alternative execution strategy, as do JavaScript/TypeScript
+servers that depend on Node.js-specific APIs (\texttt{fs},
+\texttt{child\_process}, etc.). The tool discovery stage relies on regex pattern matching,
 which may miss dynamically registered tools or tools defined outside
 standard decorator patterns. The security pipeline gates publication
 but does not continuously monitor deployed servers for newly disclosed
 CVEs in their dependencies.
 
-Future work will target four directions: extending the TypeScript
-interpreter and evaluating Cloudflare Workers for Platforms as an
-execution substrate for servers requiring full Python runtime support,
-thereby broadening coverage to dependency-heavy Python and Node.js
-servers; automated repository webhook re-scanning to maintain current
+Future work will target four directions: evaluating Cloudflare Workers
+for Platforms as an execution substrate for servers requiring full
+runtime support beyond the current interpreter scope, thereby
+broadening coverage to dependency-heavy Python and Node.js servers; automated repository webhook re-scanning to maintain current
 security reports without manual re-publication; MCP server versioning
 with rollback capability to address the rug pull threat class identified
 in the literature \cite{jamshidi2025}; and community-contributed ratings

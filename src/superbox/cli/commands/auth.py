@@ -3,7 +3,7 @@ import json
 import time
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import click
 import requests
@@ -29,7 +29,7 @@ def _config_load() -> Config:
     return Config()
 
 
-def _read_auth() -> Optional[Dict[str, Any]]:
+def _read_auth() -> dict[str, Any] | None:
     """Read authentication tokens from local auth file"""
     if not AUTH_FILE.exists():
         return None
@@ -40,7 +40,7 @@ def _read_auth() -> Optional[Dict[str, Any]]:
         return None
 
 
-def _save_auth(payload: Dict[str, Any]) -> None:
+def _save_auth(payload: dict[str, Any]) -> None:
     """Save authentication tokens to local auth file"""
     AUTH_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(AUTH_FILE, "w", encoding="utf-8") as f:
@@ -78,7 +78,7 @@ def _session_active(cfg: Config) -> bool:
         return False
 
 
-def _login_email(cfg: Config, email: Optional[str], password: Optional[str]) -> None:
+def _login_email(cfg: Config, email: str | None, password: str | None) -> None:
     """Authenticate user with email and password via Firebase"""
     url = _identity_url("accounts:signInWithPassword", cfg.FIREBASE_API_KEY)
     email_value = email or click.prompt("Email")
@@ -293,7 +293,7 @@ def register(email: str, password: str) -> None:
 )
 @click.option("--email", help="Firebase email address (email provider only)")
 @click.option("--password", hide_input=True, help="Firebase password (email provider only)")
-def login(provider: str, email: Optional[str], password: Optional[str]) -> None:
+def login(provider: str, email: str | None, password: str | None) -> None:
     """Authenticate and store credentials locally"""
     provider_name = (provider or "email").lower()
 
