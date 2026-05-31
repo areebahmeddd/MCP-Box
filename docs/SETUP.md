@@ -50,7 +50,7 @@ npm install
 wrangler deploy
 ```
 
-After deploy, copy your Worker URL — it will look like:
+After deployment, the Worker URL has the form:
 
 ```
 https://superbox-executor.<your-subdomain>.workers.dev
@@ -107,7 +107,7 @@ wrangler r2 bucket delete superbox-mcp-registry  # tear down bucket
 | ----------------------------------- | -------------------------------------------------------------- |
 | `authentication error` on R2        | Regenerate R2 API token with Object Read & Write permissions   |
 | `No such bucket`                    | Run `wrangler r2 bucket create superbox-mcp-registry`          |
-| Pyodide load timeout                | Durable Object cold start can take 3–10 s — retry the request  |
+| Pyodide load timeout                | Durable Object cold start can take 3–10 s; retry the request   |
 | `Script startup exceeded CPU limit` | Pyodide loads lazily on first tool call, not at Worker startup |
 
 ## Cost Estimate

@@ -1,10 +1,8 @@
 # SuperBox – Installation Guide
 
-**📖 Complete Documentation:** [https://superbox.1mindlabs.org/docs](https://superbox.1mindlabs.org/docs)
+**Documentation:** [https://superbox.1mindlabs.org/docs](https://superbox.1mindlabs.org/docs)
 
-> For detailed setup guides, API references, CLI usage, examples, and troubleshooting, visit our documentation site.
-
-> Works on Windows, macOS, and Linux. Commands below use Windows PowerShell; adapt paths/activate scripts for your OS.
+> Works on Windows, macOS, and Linux. Commands below use Windows PowerShell; adapt paths and activation scripts for your OS.
 
 ## 1) Prerequisites
 
@@ -66,7 +64,7 @@ CLOUDFLARE_WORKER_URL=https://superbox-executor.<your-subdomain>.workers.dev
 FIREBASE_API_KEY=...
 FIREBASE_PROJECT_ID=...
 
-# OAuth (optional — enables Google/GitHub device login)
+# OAuth (optional: enables Google/GitHub device login)
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GITHUB_CLIENT_ID=...
@@ -140,7 +138,7 @@ docker run -p 8000:8000 \
 
 Available tags:
 
-- `latest` — Python 3.11-slim runner (includes CLI helper scripts)
+- `latest`: Python 3.11-slim runner (includes CLI helper scripts)
 
 ### Via Docker Compose (recommended for local development)
 
@@ -164,7 +162,7 @@ The server will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000). 
 
 ## 7) Use the CLI
 
-> **📖 For complete CLI usage, examples, and command references:** [https://superbox.1mindlabs.org/docs/cli](https://superbox.1mindlabs.org/docs/cli)
+CLI documentation: [https://superbox.1mindlabs.org/docs/cli](https://superbox.1mindlabs.org/docs/cli)
 
 **Quick verification:**
 
@@ -172,14 +170,12 @@ The server will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000). 
 superbox --help
 ```
 
-All CLI commands, options, and detailed examples are available in our [CLI documentation](https://superbox.1mindlabs.org/docs/cli/introduction).
-
 ## 8) Troubleshooting
 
 - Missing env: ensure `.env` is present with the variables above.
 - Cloudflare R2: verify the bucket exists (`wrangler r2 bucket list`) and the R2 API token has Object Read & Write permissions on the bucket.
 - Sonar scanner: requires `sonar-scanner` on PATH; set `SONAR_TOKEN` and `SONAR_ORGANIZATION`.
-- ggshield/Bandit/Snyk: bundled with `pip install superbox` — no separate install needed.
+- ggshield/Bandit/Snyk: bundled with `pip install superbox`; no separate install needed.
 
 ## 9) Run the test suite
 
@@ -244,7 +240,7 @@ src/superbox/server/handlers/   (Go)
 └── servers_test.go              # list/get/create/delete server CRUD
 ```
 
-No real AWS credentials, Firebase keys, or scanner tokens are required — all external calls are mocked via `moto`, `unittest.mock`, and `pytest` fixtures.
+No real AWS credentials, Firebase keys, or scanner tokens are required. All external calls are mocked via `moto`, `unittest.mock`, and `pytest` fixtures.
 
 ## 10) Uninstall / Clean up
 
