@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import boto3
 
@@ -10,8 +10,6 @@ from superbox.shared.config import Config
 def s3_client() -> Any:
     """Create and return an S3-compatible client pointed at Cloudflare R2."""
     cfg = Config()
-    # R2 exposes an S3-compatible API at:
-    #   https://<account-id>.r2.cloudflarestorage.com
     endpoint_url = f"https://{cfg.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
     return boto3.client(
         "s3",
@@ -27,7 +25,7 @@ def _server_key(server_name: str) -> str:
     return f"{server_name}.json"
 
 
-def get_server(bucket_name: str, server_name: str) -> Optional[Dict[str, Any]]:
+def get_server(bucket_name: str, server_name: str) -> dict[str, Any] | None:
     """Fetch a single MCP server JSON: <name>.json"""
     s3 = s3_client()
     key = _server_key(server_name)
@@ -39,7 +37,7 @@ def get_server(bucket_name: str, server_name: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def save_server(bucket_name: str, server_name: str, data: Dict[str, Any]) -> bool:
+def save_server(bucket_name: str, server_name: str, data: dict[str, Any]) -> bool:
     """Write a single MCP server JSON: <name>.json"""
     s3 = s3_client()
     key = _server_key(server_name)
@@ -55,16 +53,16 @@ def save_server(bucket_name: str, server_name: str, data: Dict[str, Any]) -> boo
     return True
 
 
-def list_servers(bucket_name: str) -> Dict[str, Dict[str, Any]]:
+def list_servers(bucket_name: str) -> dict[str, dict[str, Any]]:
     """List all MCP servers by enumerating *.json objects in the bucket.
 
     Returns a mapping {name: data}.
     """
     s3 = s3_client()
-    servers: Dict[str, Dict[str, Any]] = {}
-    continuation_token: Optional[str] = None
+    servers: dict[str, dict[str, Any]] = {}
+    continuation_token: str | None = None
     while True:
-        kwargs: Dict[str, Any] = {"Bucket": bucket_name}
+        kwargs: dict[str, Any] = {"Bucket": bucket_name}
         if continuation_token:
             kwargs["ContinuationToken"] = continuation_token
         resp = s3.list_objects_v2(**kwargs)
@@ -87,13 +85,13 @@ def list_servers(bucket_name: str) -> Dict[str, Dict[str, Any]]:
     return servers
 
 
-def check_server(bucket_name: str, server_name: str) -> Tuple[bool, Dict[str, Any]]:
+def check_server(bucket_name: str, server_name: str) -> tuple[bool, dict[str, Any]]:
     """Check if a per-file server exists; returns (exists, currentDataOrEmpty)."""
     data = get_server(bucket_name, server_name)
     return (data is not None, data or {})
 
 
-def upsert_server(bucket_name: str, server_name: str, server_data: Dict[str, Any]) -> bool:
+def upsert_server(bucket_name: str, server_name: str, server_data: dict[str, Any]) -> bool:
     """Create or update a single MCP server file <name>.json, preserving created_at if present."""
     existing = get_server(bucket_name, server_name)
     server_data = dict(server_data)

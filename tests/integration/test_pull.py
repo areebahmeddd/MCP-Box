@@ -50,7 +50,7 @@ class TestPullCommand:
         assert entry["type"] == "http"
         assert "weather-mcp" in entry["url"]
 
-    @pytest.mark.parametrize("client", ["windsurf", "claude", "chatgpt"])
+    @pytest.mark.parametrize("client", ["antigravity", "claude", "chatgpt"])
     def test_other_clients_write_mcp_remote_stdio_config(
         self, client: str, tmp_path: Path, sample_server: dict, s3_bucket: str
     ) -> None:

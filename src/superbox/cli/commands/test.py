@@ -29,7 +29,9 @@ def get_repo_name(repo_url: str) -> str:
 @click.option(
     "--client",
     required=True,
-    type=click.Choice(["vscode", "cursor", "windsurf", "claude", "chatgpt"], case_sensitive=False),
+    type=click.Choice(
+        ["vscode", "cursor", "antigravity", "claude", "chatgpt"], case_sensitive=False
+    ),
     help="Target client to write config for",
 )
 @click.option("--entrypoint", default="main.py", help="Entrypoint file (default: main.py)")
@@ -75,7 +77,7 @@ def test(url: str, client: str, entrypoint: str) -> None:
         display_target = {
             "vscode": "VS Code",
             "cursor": "Cursor",
-            "windsurf": "Windsurf",
+            "antigravity": "Antigravity",
             "claude": "Claude",
             "chatgpt": "ChatGPT",
         }.get(target, target)

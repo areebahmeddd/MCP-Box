@@ -172,7 +172,7 @@ class TestConfigPath:
         [
             ("vscode", "Code"),
             ("cursor", ".cursor"),
-            ("windsurf", "Windsurf"),
+            ("antigravity", "antigravity"),
             ("claude", "Claude"),
             ("chatgpt", "ChatGPT"),
         ],
@@ -192,7 +192,7 @@ class TestConfigPath:
         [
             ("vscode", "Code"),
             ("cursor", ".cursor"),
-            ("windsurf", "Windsurf"),
+            ("antigravity", "antigravity"),
             ("claude", "Claude"),
             ("chatgpt", "ChatGPT"),
         ],
@@ -208,7 +208,7 @@ class TestConfigPath:
         [
             ("vscode", "Code"),
             ("cursor", ".cursor"),
-            ("windsurf", "Windsurf"),
+            ("antigravity", "antigravity"),
             ("claude", "Claude"),
             ("chatgpt", "ChatGPT"),
         ],

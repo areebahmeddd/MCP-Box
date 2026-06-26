@@ -26,41 +26,43 @@ ___ _   _ _ __   ___ _ __| |__   _____  __  __ _ _
 
 # 🧰 SuperBox
 
-**SuperBox** (inspired by [Docker Hub](https://hub.docker.com)) helps you discover, deploy, and test MCPs in isolated sandboxes ( [Demo Video]() ). It includes:
+**SuperBox** (inspired by [Docker Hub](https://hub.docker.com)) is an open marketplace for discovering, publishing, and executing Model Context Protocol (MCP) servers in isolated sandboxes. [Demo video]()
 
-- A Python (Click) CLI to initialize metadata, run security scans, push to a registry (R2), search, and configure popular AI clients (VS Code, Cursor, Windsurf, Claude, ChatGPT)
-- A Golang (Gin) backend to list/get/create MCP servers with optional pricing and security reports
-- A Cloudflare Worker + Durable Object executor that runs MCP servers on demand directly from their Git repositories using a lightweight TypeScript interpreter (Cloudflare Workers blocks `eval()` and exceeds the WASM bundle size limit, making Pyodide unusable)
+- A Python (Click) CLI for metadata initialization, security scanning, registry publishing, and AI client configuration (VS Code, Cursor, Antigravity, Claude, ChatGPT)
+- A Go (Gin) REST API for server listing, management, and payments
+- A Cloudflare Worker and Durable Object executor that fetches and runs MCP servers directly from Git repositories using an embedded TypeScript interpreter (Pyodide is excluded by the 10 MB Cloudflare bundle limit and the blocked `eval()` in V8)
 
-Why this project:
+## Why SuperBox
 
-- There's no centralized MCP registry to discover all MCPs, and many lack clear usage docs.
-- MCPs on our platform pass a 5-step security/quality check (SonarQube, Bandit, GitGuardian) to reduce vulnerabilities and promote best practices.
-- Unlike MCPs that run locally on your machine, MCP servers here execute in sandboxed environments and return responses securely.
+- No centralized registry exists for MCP server discovery; servers are scattered across GitHub with no enforced quality or security standard.
+- MCP servers are typically run directly on the developer's machine with no scanning, validation, or isolation.
+- No standardized deployment workflow exists for integrating MCP servers across AI clients and cloud environments.
 
 ## Key Features
 
 - **Central MCP Registry**: R2-backed registry with per-server JSON for easy discovery and portability.
-- **Sandboxed Execution**: MCP servers run in Cloudflare Durable Objects and return responses securely. The executor supports `requests`-based HTTP tools; see `cloudflare/README.md` for the full scope.
-- **Security Pipeline (5-step)**: SonarQube, Bandit, and GitGuardian checks with a unified report.
+- **Security Pipeline (5-step)**: SonarCloud, Bandit, and GitGuardian checks with a unified report.
+- **Tool Discovery**: Regex-based discovery across Python source (`@mcp.tool` decorators) and TypeScript/JavaScript source (`server.tool` / Zod schemas), plus `package.json` metadata.
 - **One-Command Publish**: `superbox push` scans, discovers tools, and uploads a unified record to R2.
 - **Client Auto-Config**: `superbox pull --client cursor|vscode|...` writes correct MCP config pointing to the Cloudflare Worker.
+- **Sandboxed Execution**: MCP servers run in Cloudflare Durable Objects and return responses securely. The executor supports Python (`requests`-based) and JavaScript/TypeScript (`fetch()`-based) tools; see `cloudflare/README.md` for the full scope.
 - **Terminal Runner**: `superbox run --name <server>` starts an interactive prompt against the Cloudflare executor.
 - **Live Logs**: `superbox logs --name <server>` shows instructions for streaming logs via `wrangler tail`.
-- **Tool Discovery**: Regex-based discovery across Python code and optional Node `package.json` definitions.
 
 ## 📚 Documentation
 
-**For complete documentation, setup guides, API references, and CLI usage:**
+Complete documentation including setup guides, API reference, CLI usage, and deployment instructions:
 
-🔗 **[https://superbox.1mindlabs.org/docs](https://superbox.1mindlabs.org/docs)**
+<https://superbox.1mindlabs.org/docs>
 
 ## 📄 Research Paper
 
-The IEEE research paper for SuperBox is available in the [`ieee/`](ieee/) directory:
+SuperBox is documented in an IEEE-format research paper covering system design, the five-stage security pipeline, execution performance benchmarks, and end-to-end publish-to-execution validation.
 
-- [`paper.pdf`](ieee/paper.pdf) – compiled paper
-- [`paper.tex`](ieee/paper.tex) – LaTeX source
+Available in the [`ieee/`](ieee/) directory:
+
+- [`paper.pdf`](ieee/paper.pdf) - compiled PDF
+- [`paper.tex`](ieee/paper.tex) - LaTeX source
 
 ## 🗂️ Project Structure
 
@@ -87,39 +89,33 @@ The IEEE research paper for SuperBox is available in the [`ieee/`](ieee/) direct
 
 ## 🌐 API Reference
 
-The HTTP API provides endpoints for server management, authentication, and payments.
-
-For complete API documentation, see:
-[https://superbox.1mindlabs.org/docs/api](https://superbox.1mindlabs.org/docs/api)
+The HTTP API exposes endpoints for server management, authentication, and payments. Full reference: [https://superbox.1mindlabs.org/docs/api](https://superbox.1mindlabs.org/docs/api)
 
 ## 🔧 CLI Overview
 
-The SuperBox CLI provides commands for authentication, server management, and testing:
+The CLI provides commands for authentication, server management, and testing:
 
 **Authentication:**
 
-- `superbox auth register` – Register a new account
-- `superbox auth login` – Log in (email/Google/GitHub)
-- `superbox auth logout` – Log out
-- `superbox auth status` – Check authentication status
-- `superbox auth refresh` – Refresh authentication token
+- `superbox auth register` - Register a new account
+- `superbox auth login` - Log in (email/Google/GitHub)
+- `superbox auth logout` - Log out
+- `superbox auth status` - Check authentication status
+- `superbox auth refresh` - Refresh authentication token
 
 **Server Management:**
 
-- `superbox init` – Initialize a new MCP server project
-- `superbox push` – Publish server to registry
-- `superbox pull` – Download and configure server for AI clients
-- `superbox search` – Search for servers in registry
-- `superbox inspect` – View server details and security report
-- `superbox test` – Test server directly from repository (without registry)
+- `superbox init` - Initialize a new MCP server project
+- `superbox push` - Publish server to registry
+- `superbox pull` - Download and configure server for AI clients
+- `superbox search` - Search for servers in registry
+- `superbox inspect` - View server details and security report
+- `superbox test` - Test server directly from repository (without registry)
 
 **Execution & Monitoring:**
 
-- `superbox run` – Run server in interactive mode
-- `superbox logs` – View server execution logs
-
-For detailed CLI documentation and usage examples, see:
-[https://superbox.1mindlabs.org/docs/cli](https://superbox.1mindlabs.org/docs/cli)
+- `superbox run` - Run server in interactive mode
+- `superbox logs` - View server execution logs
 
 ## 📦 Installation
 
@@ -127,18 +123,25 @@ For detailed CLI documentation and usage examples, see:
 pip install superbox
 ```
 
-- **PyPI:** [https://pypi.org/project/superbox](https://pypi.org/project/superbox)
-- **npm:** coming soon
+- PyPI: <https://pypi.org/project/superbox>
+- npm: <https://npmjs.com/package/superbox>
 
 See [docs/INSTALL.md](docs/INSTALL.md) for complete installation instructions.
 
+## Related Repositories
+
+| Repository                                                              | Description                                          |
+|-------------------------------------------------------------------------|------------------------------------------------------|
+| [superbox.ai](https://github.com/areebahmeddd/superbox.ai)              | Python CLI and Go REST API                           |
+| [superbox-fe](https://github.com/areebahmeddd/SuperBox-FE)              | Next.js web marketplace                              |
+| [superbox-executor](https://github.com/areebahmeddd/SuperBox-Executor)  | Cloudflare Worker and Durable Object MCP executor    |
+| [superbox-infra](https://github.com/areebahmeddd/SuperBox-Infra)        | OpenTofu infrastructure and deployment configuration |
+
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## 👥 Authors
-
-**Core Contributors:**
 
 - [Areeb Ahmed](https://github.com/areebahmeddd)
 - [Amartya Anand](https://github.com/amarr07)

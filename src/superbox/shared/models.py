@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, EmailStr
 
 
@@ -43,10 +41,10 @@ class MCPServer(BaseModel):
     license: str
     entrypoint: str
     repository: Repository
-    pricing: Optional[Pricing] = None
-    tools: Optional[dict] = None
-    security_report: Optional[dict] = None
-    meta: Optional[Meta] = None
+    pricing: Pricing | None = None
+    tools: dict | None = None
+    security_report: dict | None = None
+    meta: Meta | None = None
 
 
 # Server API Models
@@ -62,23 +60,23 @@ class CreateServerRequest(BaseModel):
     entrypoint: str
     repository: Repository
     pricing: Pricing
-    tools: Optional[dict] = None
+    tools: dict | None = None
 
 
 class UpdateServerRequest(BaseModel):
     """Request payload for updating an MCP server"""
 
-    name: Optional[str] = None
-    version: Optional[str] = None
-    description: Optional[str] = None
-    author: Optional[str] = None
-    lang: Optional[str] = None
-    license: Optional[str] = None
-    entrypoint: Optional[str] = None
-    repository: Optional[Repository] = None
-    pricing: Optional[Pricing] = None
-    tools: Optional[dict] = None
-    security_report: Optional[dict] = None
+    name: str | None = None
+    version: str | None = None
+    description: str | None = None
+    author: str | None = None
+    lang: str | None = None
+    license: str | None = None
+    entrypoint: str | None = None
+    repository: Repository | None = None
+    pricing: Pricing | None = None
+    tools: dict | None = None
+    security_report: dict | None = None
 
 
 # Auth API Models
@@ -87,7 +85,7 @@ class AuthRegisterRequest(BaseModel):
 
     email: EmailStr
     password: str
-    display_name: Optional[str] = None
+    display_name: str | None = None
 
 
 class AuthLoginRequest(BaseModel):
@@ -101,8 +99,8 @@ class AuthProviderRequest(BaseModel):
     """Request payload for logging in via OAuth providers"""
 
     provider: str
-    id_token: Optional[str] = None
-    access_token: Optional[str] = None
+    id_token: str | None = None
+    access_token: str | None = None
 
 
 class AuthDeviceStartRequest(BaseModel):
@@ -126,8 +124,8 @@ class AuthRefreshRequest(BaseModel):
 class AuthUpdateRequest(BaseModel):
     """Request payload for updating user profile details"""
 
-    display_name: Optional[str] = None
-    password: Optional[str] = None
+    display_name: str | None = None
+    password: str | None = None
 
 
 class AuthResponse(BaseModel):
@@ -136,16 +134,16 @@ class AuthResponse(BaseModel):
     id_token: str
     refresh_token: str
     expires_in: int
-    email: Optional[str] = None
-    local_id: Optional[str] = None
+    email: str | None = None
+    local_id: str | None = None
 
 
 class AuthUserProfile(BaseModel):
     """Response payload for user profile lookup"""
 
-    email: Optional[str] = None
+    email: str | None = None
     local_id: str
-    display_name: Optional[str] = None
+    display_name: str | None = None
     email_verified: bool = False
     disabled: bool = False
 

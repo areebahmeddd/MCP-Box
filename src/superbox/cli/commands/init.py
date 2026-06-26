@@ -47,9 +47,21 @@ def init() -> None:
     description = click.prompt("Description", default=f"MCP server for {name}")
     default_author = _get_logged_in_name()
     author = click.prompt("Author", default=default_author)
-    lang = click.prompt("Language", default="Python")
+    lang = click.prompt(
+        "Language",
+        default="Python",
+        type=click.Choice(["Python", "TypeScript", "JavaScript"], case_sensitive=False),
+    )
     license_type = click.prompt("License", default="MIT")
-    entrypoint = click.prompt("Entrypoint file", default="main.py")
+
+    if lang.lower() == "typescript":
+        default_entrypoint = "index.ts"
+    elif lang.lower() == "javascript":
+        default_entrypoint = "index.js"
+    else:
+        default_entrypoint = "main.py"
+
+    entrypoint = click.prompt("Entrypoint file", default=default_entrypoint)
 
     if not repo_url:
         repo_url = click.prompt("Repository URL", default="")

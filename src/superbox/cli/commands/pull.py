@@ -14,7 +14,9 @@ from superbox.shared.config import Config, load_env
 @click.option(
     "--client",
     required=True,
-    type=click.Choice(["vscode", "cursor", "windsurf", "claude", "chatgpt"], case_sensitive=False),
+    type=click.Choice(
+        ["vscode", "cursor", "antigravity", "claude", "chatgpt"], case_sensitive=False
+    ),
     help="Target client to write config for",
 )
 def pull(name: str, client: str) -> None:
@@ -61,7 +63,7 @@ def pull(name: str, client: str) -> None:
         display_target = {
             "vscode": "VS Code",
             "cursor": "Cursor",
-            "windsurf": "Windsurf",
+            "antigravity": "Antigravity",
             "claude": "Claude",
             "chatgpt": "ChatGPT",
         }.get(target, target)
@@ -100,8 +102,8 @@ def pull(name: str, client: str) -> None:
         click.echo("Success!")
         click.echo("=" * 70)
         click.echo(f"\nServer '{name}' added to {display_target} MCP config")
-        click.echo(f"\nEndpoint: {mcp_url}")
-        click.echo(f"\nLocation: {path}")
+        # click.echo(f"\nEndpoint: {mcp_url}")
+        # click.echo(f"\nLocation: {path}")
     except Exception as e:
         click.echo(f"\nError: {str(e)}")
         sys.exit(1)

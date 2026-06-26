@@ -2,38 +2,11 @@ import re
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
-def scan_repo(repo_path: str) -> Dict[str, Any]:
-    """
-    Discover MCP tools from a repository by analyzing Python files.
-    Returns dict with tool count and tool names list.
-    """
-    tools = []
-
-    python_files = list(Path(repo_path).rglob("*.py"))
-
-    for py_file in python_files:
-        try:
-            with open(py_file, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            file_tools = extract_tools(content)
-            tools.extend(file_tools)
-        except Exception:
-            continue
-
-    unique_tools = list(set(tools))
-
-    return {"count": len(unique_tools), "names": sorted(unique_tools)}
-
-
-def extract_tools(content: str) -> List[str]:
-    """
-    Extract MCP tool names from Python code.
-    Looks for @server.call_tool, @mcp.tool, and similar patterns.
-    """
+def extract_tools(content: str) -> list[str]:
+    """Extract MCP tool names from Python source."""
     tools = []
 
     # Pattern 1: Decorators with explicit names
@@ -70,10 +43,74 @@ def extract_tools(content: str) -> List[str]:
     return tools
 
 
-def scan_package(repo_path: str) -> Dict[str, Any]:
-    """
-    Check if there's a package.json with MCP tool definitions (for Node.js servers)
-    """
+def scan_repo(repo_path: str) -> dict[str, Any]:
+    """Discover MCP tools from Python files in a repository."""
+    tools = []
+
+    python_files = list(Path(repo_path).rglob("*.py"))
+
+    for py_file in python_files:
+        try:
+            with open(py_file, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            file_tools = extract_tools(content)
+            tools.extend(file_tools)
+        except Exception:
+            continue
+
+    unique_tools = list(set(tools))
+
+    return {"count": len(unique_tools), "names": sorted(unique_tools)}
+
+
+def extract_ts(content: str) -> list[str]:
+    """Extract MCP tool names from TypeScript/JavaScript source."""
+    tools = []
+
+    # Pattern: .tool("name", ...) or .registerTool("name", ...)
+    tool_patterns = [
+        r'\.(?:registerTool|tool)\(\s*["\'`]([A-Za-z_][\w]*)["\' `]',
+    ]
+
+    for pattern in tool_patterns:
+        matches = re.findall(pattern, content, re.MULTILINE)
+        tools.extend(matches)
+
+    tools = [t for t in tools if t and not t.startswith("_") and len(t) > 1]
+
+    return tools
+
+
+def scan_typescript(repo_path: str) -> dict[str, Any]:
+    """Discover MCP tools from TypeScript and JavaScript files in a repository."""
+    tools = []
+
+    ts_files = list(Path(repo_path).rglob("*.ts")) + list(Path(repo_path).rglob("*.js"))
+    # skip dist/, node_modules/, and .d.ts files
+    ts_files = [
+        f
+        for f in ts_files
+        if "node_modules" not in f.parts and "dist" not in f.parts and ".d.ts" not in f.name
+    ]
+
+    for ts_file in ts_files:
+        try:
+            with open(ts_file, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            file_tools = extract_ts(content)
+            tools.extend(file_tools)
+        except Exception:
+            continue
+
+    unique_tools = list(set(tools))
+
+    return {"count": len(unique_tools), "names": sorted(unique_tools)}
+
+
+def scan_package(repo_path: str) -> dict[str, Any]:
+    """Discover MCP tools declared in package.json under the mcp.tools key."""
     package_json = Path(repo_path) / "package.json"
 
     if not package_json.exists():
@@ -93,8 +130,8 @@ def scan_package(repo_path: str) -> Dict[str, Any]:
         return {"count": 0, "names": []}
 
 
-def clone_repo(repo_url: str, target_dir: str) -> Optional[str]:
-    """Clone a repository to target_dir and return the clone path, or None on failure"""
+def clone_repo(repo_url: str, target_dir: str) -> str | None:
+    """Clone a repository to target_dir and return the clone path, or None on failure."""
     try:
         repo_path = Path(target_dir) / "repo"
         result = subprocess.run(
@@ -110,9 +147,20 @@ def clone_repo(repo_url: str, target_dir: str) -> Optional[str]:
         return None
 
 
-def discover_tools(repo_path: str) -> Dict[str, Any]:
-    """Discover tools by scanning code and package.json, merged and deduplicated"""
+def check_npm(repo_path: str) -> bool:
+    """Return True if the repository uses npm (has package.json and no Python files)."""
+    path = Path(repo_path)
+    has_package_json = (path / "package.json").exists()
+    python_files = [f for f in path.rglob("*.py") if "node_modules" not in f.parts]
+    return has_package_json and len(python_files) == 0
+
+
+def discover_tools(repo_path: str) -> dict[str, Any]:
+    """Discover tools from source files and package.json, deduplicated."""
     from_repo = scan_repo(repo_path)
+    from_ts = scan_typescript(repo_path)
     from_pkg = scan_package(repo_path)
-    names = sorted(list(set(from_repo.get("names", []) + from_pkg.get("names", []))))
+    names = sorted(
+        list(set(from_repo.get("names", []) + from_ts.get("names", []) + from_pkg.get("names", [])))
+    )
     return {"count": len(names), "names": names}

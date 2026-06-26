@@ -1012,11 +1012,11 @@
       "locked": false,
       "fontSize": 16,
       "fontFamily": 1,
-      "text": "Supported Clients via 'superbox pull':\n• VS Code - Auto-config for Copilot\n• Cursor - Auto-config for AI\n• Windsurf - MCP integration\n• Claude Desktop - stdio bridge\n• ChatGPT - Custom MCP config",
+      "text": "Supported Clients via 'superbox pull':\n• VS Code - Auto-config for Copilot\n• Cursor - Auto-config for AI\n• Antigravity - MCP integration\n• Claude Desktop - stdio bridge\n• ChatGPT - Custom MCP config",
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "Supported Clients via 'superbox pull':\n• VS Code - Auto-config for Copilot\n• Cursor - Auto-config for AI\n• Windsurf - MCP integration\n• Claude Desktop - stdio bridge\n• ChatGPT - Custom MCP config",
+      "originalText": "Supported Clients via 'superbox pull':\n• VS Code - Auto-config for Copilot\n• Cursor - Auto-config for AI\n• Antigravity - MCP integration\n• Claude Desktop - stdio bridge\n• ChatGPT - Custom MCP config",
       "lineHeight": 1.25,
       "baseline": 113
     },

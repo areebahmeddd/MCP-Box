@@ -4,10 +4,10 @@ import json
 import tempfile
 import subprocess
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 
-def run_scan(repo_path: str) -> Dict[str, Any]:
+def run_scan(repo_path: str) -> dict[str, Any]:
     """Run Bandit security scan on Python repository"""
     print("[Bandit] Starting security scan", file=sys.stderr)
     if not os.path.exists(repo_path):

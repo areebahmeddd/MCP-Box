@@ -1,13 +1,13 @@
 import os
 import sys
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
 from superbox.shared.config import Config
 
 
-def run_scan(repo_path: str) -> Dict[str, Any]:
+def run_scan(repo_path: str) -> dict[str, Any]:
     """Run Snyk dependency vulnerability scan via REST API"""
     print("[Snyk] Scanning dependencies", file=sys.stderr)
 
