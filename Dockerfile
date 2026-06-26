@@ -24,6 +24,10 @@ FROM python:3.11-slim AS runner
 
 WORKDIR /app
 
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends git \
+	&& rm -rf /var/lib/apt/lists/*
+
 # Install superbox package with CLI extras (required by s3_helper.py and security_helper.py)
 COPY pyproject.toml README.md ./
 COPY src/ ./src/

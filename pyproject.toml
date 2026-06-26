@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "superbox"
 version = "1.0.0"
-description = "Discover, deploy, and test MCPs in isolated sandboxes"
+description = "Discover, deploy and test MCPs in isolated sandboxes"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
